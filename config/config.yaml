@@ -11,7 +11,7 @@ scanning:
   max_repo_size_mb: 200
   clone_depth: 1
   clone_dir: e:\temp
-  pushed_after: "2026-01-01"
+  pushed_after: "2026-03-01"
   git_clone_timeout_seconds: 120
   languages:
     - php

@@ -40,6 +40,7 @@ coverage.xml
 *.db-shm
 
 # Pipeline runtime output
+pipeline.log
 findings_report.json
 clones/
 
