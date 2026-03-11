@@ -6,6 +6,9 @@ An async Python pipeline that discovers, clones, and scans public GitHub reposit
 
 **Detected vulnerability classes:** Command injection, deserialization, file inclusion / path traversal, SQL injection, SSRF, XSS
 
+Tremendous idea provided by Florian at https://github.com/dub-flow/github-dorks/
+
+
 ---
 
 ## How it works
