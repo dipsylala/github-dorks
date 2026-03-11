@@ -1,0 +1,28 @@
+language: java
+cwe_id: "CWE-918"
+cwe_name: "Server-Side Request Forgery (SSRF)"
+
+patterns:
+  - id: ssrf_java_url_openconnection_var
+    name: Java new URL() with variable
+    regex: 'new\s+URL\s*\(\s*(url|target|endpoint|userInput|param)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_java_url_openstream_var
+    name: Java URL.openStream() on variable URL
+    regex: 'new\s+URL\s*\(.*\)\.openStream\s*\('
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_java_httpclient_send_var
+    name: Java HttpClient.send() with variable URI
+    regex: 'HttpRequest\.newBuilder\s*\(\s*URI\.create\s*\(\s*(url|target|endpoint|param)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_java_resttemplate_var
+    name: Java RestTemplate with variable URL
+    regex: 'restTemplate\.(getForObject|postForObject|exchange)\s*\(\s*(url|target|endpoint|param)'
+    vulnerability_type: ssrf
+    severity_score: 6

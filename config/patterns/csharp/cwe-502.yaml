@@ -1,0 +1,34 @@
+language: csharp
+cwe_id: "CWE-502"
+cwe_name: "Deserialization of Untrusted Data"
+
+patterns:
+  - id: deser_dotnet_binaryformatter
+    name: .NET BinaryFormatter (deprecated)
+    regex: 'new\s+BinaryFormatter\s*\(\s*\)'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_dotnet_javascriptserializer
+    name: .NET JavaScriptSerializer.Deserialize
+    regex: 'JavaScriptSerializer\s*\(\s*\).*Deserialize'
+    vulnerability_type: deserialization
+    severity_score: 7
+
+  - id: deser_dotnet_xmlserializer_var
+    name: .NET XmlSerializer with variable type
+    regex: 'new\s+XmlSerializer\s*\(\s*(type|t|typeof\()'
+    vulnerability_type: deserialization
+    severity_score: 6
+
+  - id: deser_dotnet_typenamehanding_all
+    name: .NET Newtonsoft TypeNameHandling.All
+    regex: 'TypeNameHandling\s*\.\s*All'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_dotnet_losformatter
+    name: .NET LosFormatter (legacy deserializer)
+    regex: 'new\s+LosFormatter\s*\(\s*\)'
+    vulnerability_type: deserialization
+    severity_score: 9

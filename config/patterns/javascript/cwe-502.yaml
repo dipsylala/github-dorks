@@ -1,0 +1,28 @@
+language: javascript
+cwe_id: "CWE-502"
+cwe_name: "Deserialization of Untrusted Data"
+
+patterns:
+  - id: deser_node_serialize_package
+    name: Node.js node-serialize package
+    regex: 'require\s*\(\s*[''"]node-serialize[''"]\s*\)'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_node_eval_json_parse
+    name: Node.js eval() inside JSON.parse context
+    regex: 'eval\s*\(\s*JSON\.parse\s*\('
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_node_vm_runinthiscontext
+    name: Node.js vm.runInThisContext with variable
+    regex: 'vm\.runInThisContext\s*\(\s*(req|input|param|data)'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_node_function_constructor
+    name: Node.js Function constructor with variable
+    regex: 'new\s+Function\s*\(\s*(req\.|input|param)'
+    vulnerability_type: deserialization
+    severity_score: 8

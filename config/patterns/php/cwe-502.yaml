@@ -1,0 +1,16 @@
+language: php
+cwe_id: "CWE-502"
+cwe_name: "Deserialization of Untrusted Data"
+
+patterns:
+  - id: deser_php_unserialize
+    name: PHP unserialize() with variable
+    regex: '\bunserialize\s*\(\s*\$'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_php_unserialize_request
+    name: PHP unserialize() with superglobal
+    regex: '\bunserialize\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: deserialization
+    severity_score: 10

@@ -1,0 +1,34 @@
+language: python
+cwe_id: "CWE-78"
+cwe_name: "OS Command Injection"
+
+patterns:
+  - id: cmd_python_subprocess_shell_true
+    name: Python subprocess with shell=True
+    regex: 'subprocess\.(call|run|Popen)\s*\(.*shell\s*=\s*True'
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_python_os_system
+    name: Python os.system()
+    regex: '\bos\.system\s*\('
+    vulnerability_type: command_injection
+    severity_score: 9
+
+  - id: cmd_python_os_popen
+    name: Python os.popen()
+    regex: '\bos\.popen\s*\('
+    vulnerability_type: command_injection
+    severity_score: 9
+
+  - id: cmd_python_os_exec
+    name: Python os.exec*() family
+    regex: '\bos\.exec(v|vp|vpe|l|lp|lpe)\s*\('
+    vulnerability_type: command_injection
+    severity_score: 9
+
+  - id: cmd_python_commands_getoutput
+    name: Python commands.getoutput()
+    regex: '\bcommands\.get(output|status(output)?)\s*\('
+    vulnerability_type: command_injection
+    severity_score: 9

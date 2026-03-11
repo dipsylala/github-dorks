@@ -1,0 +1,28 @@
+language: csharp
+cwe_id: "CWE-918"
+cwe_name: "Server-Side Request Forgery (SSRF)"
+
+patterns:
+  - id: ssrf_dotnet_httpclient_getasync_var
+    name: .NET HttpClient.GetAsync() with variable URL
+    regex: 'httpclient\.GetAsync\s*\(\s*(url|target|endpoint|uri)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_dotnet_httpclient_postasync_var
+    name: .NET HttpClient.PostAsync() with variable URL
+    regex: 'httpclient\.PostAsync\s*\(\s*(url|target|endpoint|uri)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_dotnet_webclient_downloadstring_var
+    name: .NET WebClient.DownloadString() with variable URL
+    regex: 'WebClient.*\.DownloadString\s*\(\s*(url|target|endpoint|uri|request)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_dotnet_webrequest_create_var
+    name: .NET WebRequest.Create() with variable URL
+    regex: 'WebRequest\.Create\s*\(\s*(url|target|endpoint|uri|request)'
+    vulnerability_type: ssrf
+    severity_score: 6

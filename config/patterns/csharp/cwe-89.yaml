@@ -1,0 +1,28 @@
+language: csharp
+cwe_id: "CWE-89"
+cwe_name: "SQL Injection"
+
+patterns:
+  - id: sqli_dotnet_sqlcommand_string_format
+    name: .NET SqlCommand with string.Format
+    regex: 'SqlCommand\s*\(\s*string\.Format\s*\('
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_dotnet_sqlcommand_concat
+    name: .NET SqlCommand with string concatenation
+    regex: 'new\s+SqlCommand\s*\(\s*".*"\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_dotnet_sqlcommand_interpolated
+    name: .NET SqlCommand with interpolated string
+    regex: 'new\s+SqlCommand\s*\(\s*\$"'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_dotnet_entityframework_fromsql
+    name: .NET EF FromSql/ExecuteSqlRaw with variable
+    regex: '\.(FromSql|ExecuteSqlRaw|ExecuteSqlCommand)\s*\(\s*\$"|\.(FromSql|ExecuteSqlRaw)\s*\(\s*".*"\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7

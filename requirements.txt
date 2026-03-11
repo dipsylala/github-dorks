@@ -1,0 +1,4 @@
+aiohttp>=3.9
+aiosqlite>=0.20
+pydantic>=2.5
+pyyaml>=6.0

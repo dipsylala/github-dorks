@@ -1,0 +1,30 @@
+language: php
+cwe_id: "CWE-918"
+cwe_name: "Server-Side Request Forgery (SSRF)"
+
+patterns:
+  - id: ssrf_php_curl_setopt_url
+    name: PHP curl_setopt() CURLOPT_URL with variable
+    regex: 'curl_setopt\s*\(.*CURLOPT_URL.*\$'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_php_curl_setopt_array
+    name: PHP curl_setopt_array() with variable URL
+    regex: 'curl_setopt_array\s*\(.*CURLOPT_URL.*\$'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_php_file_get_contents_http
+    name: PHP file_get_contents() with variable URL
+    regex: |-
+      file_get_contents\s*\(\s*(\$|"http|'http)
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_php_fopen_http
+    name: PHP fopen() with HTTP URL variable
+    regex: |-
+      fopen\s*\(\s*(\$url|"http|'http)
+    vulnerability_type: ssrf
+    severity_score: 6

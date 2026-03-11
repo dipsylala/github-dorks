@@ -1,0 +1,28 @@
+language: java
+cwe_id: "CWE-89"
+cwe_name: "SQL Injection"
+
+patterns:
+  - id: sqli_java_statement_concat
+    name: Java Statement.executeQuery() with string concat
+    regex: 'executeQuery\s*\(\s*".*"\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_java_statement_execute_concat
+    name: Java Statement.execute() with string concat
+    regex: '\bexecute\s*\(\s*".*"\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_java_createquery_concat
+    name: Java createQuery() with string concat
+    regex: 'createQuery\s*\(\s*".*"\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_java_createnativequery_concat
+    name: Java createNativeQuery() with string concat
+    regex: 'createNativeQuery\s*\(\s*".*"\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7

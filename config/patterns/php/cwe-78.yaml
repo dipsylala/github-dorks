@@ -1,0 +1,40 @@
+language: php
+cwe_id: "CWE-78"
+cwe_name: "OS Command Injection"
+
+patterns:
+  - id: cmd_php_exec
+    name: PHP exec()
+    regex: '\bexec\s*\('
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_php_system
+    name: PHP system()
+    regex: '\bsystem\s*\('
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_php_passthru
+    name: PHP passthru()
+    regex: '\bpassthru\s*\('
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_php_shell_exec
+    name: PHP shell_exec()
+    regex: '\bshell_exec\s*\('
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_php_backtick
+    name: PHP backtick operator
+    regex: '`[^`]*\$[^`]*`'
+    vulnerability_type: command_injection
+    severity_score: 9
+
+  - id: cmd_php_proc_open
+    name: PHP proc_open()
+    regex: '\bproc_open\s*\('
+    vulnerability_type: command_injection
+    severity_score: 10

@@ -1,0 +1,28 @@
+language: python
+cwe_id: "CWE-89"
+cwe_name: "SQL Injection"
+
+patterns:
+  - id: sqli_python_execute_format
+    name: Python cursor.execute() with f-string or %
+    regex: '(cursor\.execute|\.execute)\s*\(\s*f[''"]|\.execute\s*\(.*%\s*\('
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_python_execute_concat
+    name: Python cursor.execute() with string concat
+    regex: '(cursor\.execute|\.execute)\s*\(\s*[''"].*[''"\s]\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_python_raw_sql_request
+    name: Python raw SQL with request-derived value
+    regex: '(SELECT|INSERT|UPDATE|DELETE).*\+\s*(request|req)\.'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_python_text_interpolated
+    name: SQLAlchemy text() with f-string
+    regex: 'text\s*\(\s*f[''"].*\{'
+    vulnerability_type: sql_injection
+    severity_score: 7

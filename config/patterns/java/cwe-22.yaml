@@ -1,0 +1,28 @@
+language: java
+cwe_id: "CWE-22"
+cwe_name: "Path Traversal"
+
+patterns:
+  - id: path_java_fileinputstream_var
+    name: Java FileInputStream with variable path
+    regex: 'new\s+FileInputStream\s*\(\s*(path|file|filename|input|request)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_java_fileoutputstream_var
+    name: Java FileOutputStream with variable path
+    regex: 'new\s+FileOutputStream\s*\(\s*(path|file|filename|input|request)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_java_paths_get_var
+    name: Java Paths.get() with request-derived value
+    regex: 'Paths\.get\s*\(.*getParameter\s*\('
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_java_file_constructor_var
+    name: Java new File() with request parameter
+    regex: 'new\s+File\s*\(.*getParameter\s*\('
+    vulnerability_type: path_traversal
+    severity_score: 7

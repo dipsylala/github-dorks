@@ -1,0 +1,28 @@
+language: java
+cwe_id: "CWE-502"
+cwe_name: "Deserialization of Untrusted Data"
+
+patterns:
+  - id: deser_java_objectinputstream
+    name: Java ObjectInputStream constructor
+    regex: 'new\s+ObjectInputStream\s*\('
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_java_readobject
+    name: Java readObject() call
+    regex: '\.readObject\s*\(\s*\)'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_java_readunshared
+    name: Java readUnshared() call
+    regex: '\.readUnshared\s*\(\s*\)'
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_java_xmldecoder
+    name: Java XMLDecoder (deserialization gadget)
+    regex: 'new\s+XMLDecoder\s*\('
+    vulnerability_type: deserialization
+    severity_score: 10

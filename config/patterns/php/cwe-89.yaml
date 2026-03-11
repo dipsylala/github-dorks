@@ -1,0 +1,34 @@
+language: php
+cwe_id: "CWE-89"
+cwe_name: "SQL Injection"
+
+patterns:
+  - id: sqli_php_mysql_query
+    name: PHP mysql_query() with variable
+    regex: '\bmysql_query\s*\(.*\$'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_php_mysqli_query
+    name: PHP mysqli_query() with variable
+    regex: '\bmysqli_query\s*\(.*\$'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_php_pg_query
+    name: PHP pg_query() with variable
+    regex: '\bpg_query\s*\(.*\$'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_php_pdo_query_concat
+    name: PHP PDO query() with string concat
+    regex: '\$pdo\s*->\s*(query|exec)\s*\(.*\.'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_php_sprintf_sql
+    name: PHP sprintf() used in SQL string
+    regex: 'sprintf\s*\(\s*[''"].*\s*(SELECT|INSERT|UPDATE|DELETE)'
+    vulnerability_type: sql_injection
+    severity_score: 6

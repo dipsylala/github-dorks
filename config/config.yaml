@@ -1,0 +1,38 @@
+github:
+  token: ""               # Override with GITHUB_TOKEN env var
+  per_page: 100
+  rate_limit_pause_seconds: 60
+
+database:
+  path: pipeline.db
+
+scanning:
+  min_stars: 100
+  max_repo_size_mb: 200
+  clone_depth: 1
+  clone_dir: e:\temp
+  pushed_after: "2026-01-01"
+  git_clone_timeout_seconds: 120
+  languages:
+    - php
+    - javascript
+    - python
+    - java
+    - csharp
+  ignored_paths:
+    - node_modules
+    - vendor
+    - dist
+    - build
+    - target
+    - migrations
+  # Add extra templates to sweep more results (GitHub caps search at 1 000/query).
+  query_templates:
+    - "stars:>{min_stars} fork:false archived:false pushed:>{pushed_after} language:{language}"
+
+worker_pools:
+  clone_workers: 8
+  scan_workers: 16
+  enrichment_workers: 8
+
+patterns_dir: config/patterns

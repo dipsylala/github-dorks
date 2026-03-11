@@ -1,0 +1,34 @@
+language: javascript
+cwe_id: "CWE-79"
+cwe_name: "Cross-site Scripting (XSS)"
+
+patterns:
+  - id: xss_node_innerhtml_var
+    name: Node.js innerHTML assignment with request data
+    regex: '\.innerHTML\s*=\s*(req|request|input|param|data|user)'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_node_outerhtml_var
+    name: Node.js outerHTML assignment with variable
+    regex: '\.outerHTML\s*=\s*(req|request|input|param|data|user)'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_node_document_write_var
+    name: Node.js document.write with variable
+    regex: 'document\.write\s*\(\s*(req|request|input|param|data)'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_express_res_send_request
+    name: Express res.send() with request data
+    regex: 'res\.(send|write)\s*\(\s*(req\.(body|query|params)|input)'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_node_eval_request
+    name: Node.js eval() with request data
+    regex: '\beval\s*\(\s*(req\.|request\.|input|param)'
+    vulnerability_type: xss
+    severity_score: 5

@@ -1,0 +1,28 @@
+language: python
+cwe_id: "CWE-79"
+cwe_name: "Cross-site Scripting (XSS)"
+
+patterns:
+  - id: xss_python_render_template_string
+    name: Python Flask render_template_string with variable
+    regex: 'render_template_string\s*\(\s*(.*request\.|.*input|.*param|.*user)'
+    vulnerability_type: xss
+    severity_score: 4
+
+  - id: xss_python_jinja_from_string
+    name: Python Jinja2 Template.from_string with variable
+    regex: 'Template\.from_string\s*\(\s*(request|input|param|user)'
+    vulnerability_type: xss
+    severity_score: 4
+
+  - id: xss_python_mark_safe
+    name: Python Django mark_safe with variable
+    regex: 'mark_safe\s*\(\s*(request|input|param|f")'
+    vulnerability_type: xss
+    severity_score: 4
+
+  - id: xss_python_format_html_unsafe
+    name: Python string format used in HTTP response
+    regex: 'HttpResponse\s*\(.*format\s*\('
+    vulnerability_type: xss
+    severity_score: 3

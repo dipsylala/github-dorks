@@ -1,0 +1,22 @@
+language: java
+cwe_id: "CWE-78"
+cwe_name: "OS Command Injection"
+
+patterns:
+  - id: cmd_java_runtime_exec
+    name: Java Runtime.getRuntime().exec()
+    regex: 'Runtime\.getRuntime\(\)\.exec\s*\('
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_java_processbuilder_var
+    name: Java ProcessBuilder with variable
+    regex: 'new\s+ProcessBuilder\s*\(\s*(cmd|command|input|args|list)'
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_java_processbuilder_add
+    name: Java ProcessBuilder command list from request
+    regex: 'ProcessBuilder.*\.add\s*\(\s*(request|param|input)'
+    vulnerability_type: command_injection
+    severity_score: 10

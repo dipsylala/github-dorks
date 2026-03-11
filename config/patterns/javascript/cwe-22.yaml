@@ -1,0 +1,34 @@
+language: javascript
+cwe_id: "CWE-22"
+cwe_name: "Path Traversal"
+
+patterns:
+  - id: path_node_fs_readfile_var
+    name: Node.js fs.readFile() with request-derived path
+    regex: 'fs\.(readFile|readFileSync)\s*\(\s*(req|path|file|filename)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_node_fs_createreadstream_var
+    name: Node.js fs.createReadStream() with variable
+    regex: 'fs\.createReadStream\s*\(\s*(req|path|file|filename)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_node_path_join_request
+    name: Node.js path.join() with request parameter
+    regex: 'path\.join\s*\(.*req\.(body|query|params)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_node_res_sendfile_var
+    name: Express res.sendFile() with variable
+    regex: 'res\.sendFile\s*\(\s*(req|path|file|filename|input)'
+    vulnerability_type: path_traversal
+    severity_score: 8
+
+  - id: path_node_fs_unlink_var
+    name: Node.js fs.unlink() with variable path
+    regex: 'fs\.(unlink|unlinkSync)\s*\(\s*(req|path|file|filename|input)'
+    vulnerability_type: path_traversal
+    severity_score: 8

@@ -1,0 +1,28 @@
+language: python
+cwe_id: "CWE-22"
+cwe_name: "Path Traversal"
+
+patterns:
+  - id: path_python_open_request
+    name: Python open() with request-derived path
+    regex: '\bopen\s*\(\s*(request|req|input|param|path|filename)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_python_send_file_var
+    name: Python Flask send_file() with variable
+    regex: 'send_file\s*\(\s*(request|req|input|param|path|filename)'
+    vulnerability_type: path_traversal
+    severity_score: 8
+
+  - id: path_python_pathlib_open_var
+    name: Python pathlib Path().open() with variable
+    regex: 'Path\s*\(\s*(request|req|input|param|path|filename)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_python_os_path_join_request
+    name: Python os.path.join with request parameter
+    regex: 'os\.path\.join\s*\(.*\b(request|req)\.'
+    vulnerability_type: path_traversal
+    severity_score: 7

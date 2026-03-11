@@ -1,0 +1,28 @@
+language: javascript
+cwe_id: "CWE-89"
+cwe_name: "SQL Injection"
+
+patterns:
+  - id: sqli_node_query_template_literal
+    name: Node.js DB query with template literal
+    regex: '\.(query|execute)\s*\(\s*`[^`]*\$\{'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_node_query_concat
+    name: Node.js DB query with string concatenation
+    regex: '\.(query|execute)\s*\(\s*[''"].*[''"\s]\s*\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_node_knex_raw_var
+    name: Knex.js raw() with variable
+    regex: 'knex\.raw\s*\(\s*`[^`]*\$\{|knex\.raw\s*\(\s*(.*)\+'
+    vulnerability_type: sql_injection
+    severity_score: 7
+
+  - id: sqli_node_sequelize_query_var
+    name: Sequelize query() with variable
+    regex: 'sequelize\.(query|literal)\s*\(\s*`[^`]*\$\{'
+    vulnerability_type: sql_injection
+    severity_score: 7

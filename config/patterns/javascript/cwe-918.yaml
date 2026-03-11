@@ -1,0 +1,28 @@
+language: javascript
+cwe_id: "CWE-918"
+cwe_name: "Server-Side Request Forgery (SSRF)"
+
+patterns:
+  - id: ssrf_node_axios_var
+    name: Node.js axios with variable URL
+    regex: 'axios\.(get|post|put|delete|head|patch)\s*\(\s*(url|target|endpoint|req\.)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_node_fetch_var
+    name: Node.js fetch() with variable URL
+    regex: '\bfetch\s*\(\s*(url|target|endpoint|req\.(body|query|params))'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_node_got_var
+    name: Node.js got() with variable URL
+    regex: '\bgot\s*\(\s*(url|target|endpoint|req\.)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_node_http_request_var
+    name: Node.js http.request() with variable options
+    regex: 'https?\.(request|get)\s*\(\s*(url|target|endpoint|options|req\.)'
+    vulnerability_type: ssrf
+    severity_score: 6

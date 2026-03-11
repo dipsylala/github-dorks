@@ -1,0 +1,40 @@
+language: php
+cwe_id: "CWE-79"
+cwe_name: "Cross-site Scripting (XSS)"
+
+patterns:
+  - id: xss_php_echo_get
+    name: PHP echo with $_GET
+    regex: '\becho\s+\$_GET\s*\['
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_echo_post
+    name: PHP echo with $_POST
+    regex: '\becho\s+\$_POST\s*\['
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_echo_request
+    name: PHP echo with $_REQUEST
+    regex: '\becho\s+\$_REQUEST\s*\['
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_echo_cookie
+    name: PHP echo with $_COOKIE
+    regex: '\becho\s+\$_COOKIE\s*\['
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_print_superglobal
+    name: PHP print with superglobal
+    regex: '\bprint\s+\$_(GET|POST|REQUEST|COOKIE)\s*\['
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_printf_superglobal
+    name: PHP printf/sprintf with superglobal
+    regex: '\bprintf\s*\(.*\$_(GET|POST|REQUEST)'
+    vulnerability_type: xss
+    severity_score: 3

@@ -1,0 +1,29 @@
+language: javascript
+cwe_id: "CWE-78"
+cwe_name: "OS Command Injection"
+
+patterns:
+  - id: cmd_node_exec_var
+    name: Node.js child_process exec() with variable
+    regex: |-
+      \bexec\s*\(\s*[`'"]\s*[^`'"]|\bexec\s*\(\s*(cmd|command|input|req)
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_node_execsync_var
+    name: Node.js execSync() with variable
+    regex: '\bexecSync\s*\(\s*(cmd|command|input|req|\`)'
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_node_spawn_shell
+    name: Node.js spawn() with shell option
+    regex: '\bspawn\s*\(.*shell\s*:\s*true'
+    vulnerability_type: command_injection
+    severity_score: 10
+
+  - id: cmd_node_template_literal_exec
+    name: Node.js exec with template literal
+    regex: '\bexec\s*\(\s*`[^`]*\$\{'
+    vulnerability_type: command_injection
+    severity_score: 10

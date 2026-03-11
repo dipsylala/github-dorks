@@ -1,0 +1,28 @@
+language: python
+cwe_id: "CWE-918"
+cwe_name: "Server-Side Request Forgery (SSRF)"
+
+patterns:
+  - id: ssrf_python_requests_get_var
+    name: Python requests.get() with variable URL
+    regex: 'requests\.(get|post|put|delete|head|patch)\s*\(\s*(url|target|endpoint|host|addr)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_python_requests_request_var
+    name: Python requests.request() with variable URL
+    regex: 'requests\.request\s*\(\s*\w+\s*,\s*(url|target|endpoint|host)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_python_urllib_urlopen_var
+    name: Python urllib.request.urlopen() with variable
+    regex: 'urllib\.(request\.)?urlopen\s*\(\s*(url|target|endpoint|request)'
+    vulnerability_type: ssrf
+    severity_score: 6
+
+  - id: ssrf_python_httpx_get_var
+    name: Python httpx with variable URL
+    regex: 'httpx\.(get|post|put|delete|AsyncClient)\s*.*\(\s*(url|target|endpoint)'
+    vulnerability_type: ssrf
+    severity_score: 6

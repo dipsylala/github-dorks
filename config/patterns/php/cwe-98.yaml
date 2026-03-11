@@ -1,0 +1,46 @@
+language: php
+cwe_id: "CWE-98"
+cwe_name: "PHP Remote File Inclusion"
+
+patterns:
+  - id: file_php_include_var
+    name: PHP include with variable
+    regex: '\binclude\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 8
+
+  - id: file_php_include_once_var
+    name: PHP include_once with variable
+    regex: '\binclude_once\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 8
+
+  - id: file_php_require_var
+    name: PHP require with variable
+    regex: '\brequire\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 8
+
+  - id: file_php_require_once_var
+    name: PHP require_once with variable
+    regex: '\brequire_once\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 8
+
+  - id: file_php_fopen_var
+    name: PHP fopen() with variable
+    regex: '\bfopen\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 7
+
+  - id: file_php_file_get_contents_var
+    name: PHP file_get_contents() with variable path
+    regex: '\bfile_get_contents\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 7
+
+  - id: file_php_readfile_var
+    name: PHP readfile() with variable
+    regex: '\breadfile\s*\(\s*\$'
+    vulnerability_type: file_inclusion
+    severity_score: 7
