@@ -20,7 +20,7 @@ import uuid
 from pathlib import Path
 
 from pipeline.config import PipelineConfig
-from pipeline.db import DatabasePool, FindingDAO, LocalRepositoryDAO, PatternDAO
+from pipeline.db import DatabasePool, FindingDAO, LocalRepositoryDAO
 from pipeline.models import Finding, LocalRepository, Pattern
 
 from .base import BaseStage

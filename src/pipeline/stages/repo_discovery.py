@@ -21,10 +21,9 @@ sets, add multiple templates that partition by star range, e.g.:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 
-from pipeline.config import PipelineConfig
-from pipeline.db import DatabasePool, RepositoryDAO
+from pipeline.db import RepositoryDAO
 from pipeline.github import GitHubGraphQLClient
 from pipeline.models import Repository
 

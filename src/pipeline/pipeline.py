@@ -89,7 +89,7 @@ class Pipeline:
     # ------------------------------------------------------------------ #
 
     @classmethod
-    async def create(cls, config: PipelineConfig, db: DatabasePool) -> "Pipeline":
+    async def create(cls, config: PipelineConfig, db: DatabasePool) -> Pipeline:
         """Bootstrap the schema, load and persist patterns, return a Pipeline.
 
         This is the preferred way to instantiate the pipeline — calling

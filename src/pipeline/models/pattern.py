@@ -24,7 +24,6 @@ import logging
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -125,7 +124,7 @@ def _load_file(
     Returns ``(loaded_count, skipped_count)``.
     """
     try:
-        raw: Any = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
+        raw: object = yaml.safe_load(yaml_file.read_text(encoding="utf-8"))
     except (OSError, yaml.YAMLError) as exc:
         logger.warning("pattern_file_error file=%s error=%s", yaml_file, exc)
         return 0, 0
@@ -138,7 +137,7 @@ def _load_file(
     file_cwe: str = str(raw.get("cwe_id") or "")
     file_cwe_name: str = str(raw.get("cwe_name") or "")
 
-    entries: list[Any] = raw.get("patterns") or []
+    entries: list[object] = raw.get("patterns") or []
     if not isinstance(entries, list):
         logger.warning(
             "pattern_file_invalid file=%s reason=patterns_not_a_list", yaml_file
@@ -164,7 +163,7 @@ def _load_file(
 
 
 def _parse_entry(
-    entry: Any,
+    entry: object,
     *,
     file_language: str,
     file_cwe: str,

@@ -77,7 +77,7 @@ class PipelineConfig:
     report_path: str = "findings_report.json"
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "PipelineConfig":
+    def from_yaml(cls, path: str | Path) -> PipelineConfig:
         with open(path) as fh:
             raw: dict[str, Any] = yaml.safe_load(fh)
 

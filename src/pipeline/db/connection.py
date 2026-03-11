@@ -6,7 +6,6 @@ import logging
 import sqlite3
 from pathlib import Path
 from types import TracebackType
-from typing import Any
 
 import aiosqlite
 
@@ -16,6 +15,9 @@ logger = logging.getLogger(__name__)
 
 # aiosqlite returns sqlite3.Row objects; expose the same type for callers.
 Row = sqlite3.Row
+
+# SQLite accepts these types as query parameters.
+_Param = str | int | float | bytes | None
 
 
 class DatabasePool:
@@ -48,31 +50,31 @@ class DatabasePool:
             await self._conn.close()
             logger.info("SQLite connection closed.")
 
-    async def execute(self, query: str, *args: Any) -> None:
+    async def execute(self, query: str, *args: _Param) -> None:
         """Execute a write statement and commit."""
         assert self._conn is not None, "Not connected — call connect() first"
         await self._conn.execute(query, args)
         await self._conn.commit()
 
-    async def executemany(self, query: str, params: list[Any]) -> None:
+    async def executemany(self, query: str, params: list[tuple[_Param, ...]]) -> None:
         """Execute a write statement for each row in *params* and commit."""
         assert self._conn is not None, "Not connected — call connect() first"
         await self._conn.executemany(query, params)
         await self._conn.commit()
 
-    async def fetch(self, query: str, *args: Any) -> list[sqlite3.Row]:
+    async def fetch(self, query: str, *args: _Param) -> list[sqlite3.Row]:
         """Execute a read query and return all matching rows."""
         assert self._conn is not None, "Not connected — call connect() first"
         async with self._conn.execute(query, args) as cursor:
             return await cursor.fetchall()
 
-    async def fetchrow(self, query: str, *args: Any) -> sqlite3.Row | None:
+    async def fetchrow(self, query: str, *args: _Param) -> sqlite3.Row | None:
         """Execute a read query and return at most one row."""
         assert self._conn is not None, "Not connected — call connect() first"
         async with self._conn.execute(query, args) as cursor:
             return await cursor.fetchone()
 
-    async def fetchval(self, query: str, *args: Any) -> Any:
+    async def fetchval(self, query: str, *args: _Param) -> _Param:
         """Execute a read query and return a single scalar value."""
         row = await self.fetchrow(query, *args)
         return row[0] if row is not None else None
@@ -86,7 +88,7 @@ class DatabasePool:
     # Context manager support
     # ------------------------------------------------------------------ #
 
-    async def __aenter__(self) -> "DatabasePool":
+    async def __aenter__(self) -> DatabasePool:
         await self.connect()
         return self
 

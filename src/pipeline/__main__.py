@@ -22,7 +22,7 @@ from pathlib import Path
 from pipeline.config import PipelineConfig
 from pipeline.db import DatabasePool
 from pipeline.logging_config import configure_logging
-from pipeline.pipeline import Pipeline, STAGE_ORDER
+from pipeline.pipeline import STAGE_ORDER, Pipeline
 
 logger = logging.getLogger(__name__)
 

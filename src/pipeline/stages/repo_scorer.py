@@ -14,7 +14,7 @@ Scoring rules (additive):
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pipeline.config import PipelineConfig
@@ -83,10 +83,10 @@ class RepoScorer(BaseStage):
         if repo.stars > 2000:
             score += 10
 
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         last_push = repo.last_push
         if last_push.tzinfo is None:
-            last_push = last_push.replace(tzinfo=timezone.utc)
+            last_push = last_push.replace(tzinfo=UTC)
         age_seconds = (now - last_push).total_seconds()
         if age_seconds < _SIX_MONTHS_SECONDS:
             score += 4

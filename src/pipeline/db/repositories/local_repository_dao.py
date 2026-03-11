@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pipeline.db.connection import DatabasePool
 from pipeline.models.repository import LocalRepository
@@ -17,7 +17,7 @@ def _row_to_local_repository(row: object) -> LocalRepository:
     try:
         ts = datetime.fromisoformat(row["clone_timestamp"])
     except ValueError:
-        ts = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        ts = datetime(1970, 1, 1, tzinfo=UTC)
     return LocalRepository(
         repository_id=row["repository_id"],
         local_path=row["local_path"],

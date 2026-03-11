@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import aiohttp
@@ -86,7 +86,7 @@ class GitHubGraphQLClient:
     # Async context manager
     # ------------------------------------------------------------------ #
 
-    async def __aenter__(self) -> "GitHubGraphQLClient":
+    async def __aenter__(self) -> GitHubGraphQLClient:
         self._session = aiohttp.ClientSession(
             headers={
                 "Authorization": f"bearer {self._token}",
@@ -335,7 +335,7 @@ class GitHubGraphQLClient:
         reset_at = datetime.fromisoformat(
             rate_limit["resetAt"].replace("Z", "+00:00")
         )
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         sleep_secs = max(0.0, (reset_at - now).total_seconds()) + 5  # +5s buffer
 
         logger.warning(

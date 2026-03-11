@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pipeline.db.connection import DatabasePool
 from pipeline.models.repository import Repository
@@ -18,7 +18,7 @@ def _row_to_repository(row: object) -> Repository:
     try:
         last_push = datetime.fromisoformat(last_push_raw)
     except ValueError:
-        last_push = datetime(1970, 1, 1, tzinfo=timezone.utc)
+        last_push = datetime(1970, 1, 1, tzinfo=UTC)
     return Repository(
         id=row["id"],
         name=row["name"],

@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from pipeline.config import PipelineConfig
@@ -119,7 +119,7 @@ class RepoCloner(BaseStage):
                 _, stderr_bytes = await asyncio.wait_for(
                     proc.communicate(), timeout=float(timeout)
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 proc.kill()
                 await proc.communicate()  # drain
                 self._logger.warning(
@@ -162,7 +162,7 @@ class RepoCloner(BaseStage):
         return LocalRepository(
             repository_id=repo.id,
             local_path=str(dest),
-            clone_timestamp=datetime.now(tz=timezone.utc),
+            clone_timestamp=datetime.now(tz=UTC),
         )
 
 
