@@ -55,13 +55,28 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["php", "javascript", "python", "java", "csharp"],
         help="Filter by language (default: all languages)",
     )
+    parser.add_argument(
+        "--continue",
+        dest="continue_pipeline",
+        action="store_true",
+        default=False,
+        help="When combined with --stage, continue running all subsequent stages too",
+    )
     return parser
 
 
-async def _run(config: PipelineConfig, stage: str, language: str | None) -> None:
+async def _run(
+    config: PipelineConfig,
+    stage: str,
+    language: str | None,
+    continue_pipeline: bool,
+) -> None:
     async with DatabasePool(config.database) as db:
         pipeline = await Pipeline.create(config, db)
-        await pipeline.run(stage, language=language)
+        if continue_pipeline and stage != "all":
+            await pipeline.run_from(stage, language=language)
+        else:
+            await pipeline.run(stage, language=language)
 
 
 def main() -> None:
@@ -74,7 +89,7 @@ def main() -> None:
         sys.exit(1)
 
     config = PipelineConfig.from_yaml(config_path)
-    asyncio.run(_run(config, args.stage, args.language))
+    asyncio.run(_run(config, args.stage, args.language, args.continue_pipeline))
 
 
 if __name__ == "__main__":

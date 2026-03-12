@@ -106,6 +106,18 @@ uv run vuln-pipeline --stage queue
 
 Available stages (in order): `discover`, `filter`, `detect`, `score-repos`, `clone`, `scan`, `enrich`, `score-findings`, `dedup`, `queue`
 
+**Continue from a stage:**
+
+Add `--continue` to run the specified stage and all subsequent ones. Useful for resuming mid-pipeline or for incremental language-by-language runs:
+
+```bash
+# Scan C# repos then automatically enrich, score, dedup, and queue
+uv run vuln-pipeline --stage scan --language csharp --continue
+
+# Resume from enrichment after a failed run
+uv run vuln-pipeline --stage enrich --continue
+```
+
 **Filter by language:**
 
 Pass `--language` to restrict any stage (or the full pipeline) to one language.

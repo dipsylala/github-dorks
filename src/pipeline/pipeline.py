@@ -10,8 +10,9 @@ Usage::
 
     async with DatabasePool(config.database) as db:
         pipeline = await Pipeline.create(config, db)
-        await pipeline.run()          # all stages in order
-        await pipeline.run("scan")    # single stage only
+        await pipeline.run()             # all stages in order
+        await pipeline.run("scan")      # single stage only
+        await pipeline.run_from("scan") # scan and all subsequent stages
 
 Stage names
 -----------
@@ -128,6 +129,17 @@ class Pipeline:
                     f"Unknown stage '{stage}'. Valid choices: {valid}, all."
                 )
             await self._run_stage(stage, language)
+
+    async def run_from(self, stage: str, language: str | None = None) -> None:
+        """Run *stage* and every stage that follows it in order."""
+        if stage not in self._stages:
+            valid = ", ".join(STAGE_ORDER)
+            raise ValueError(
+                f"Unknown stage '{stage}'. Valid choices: {valid}, all."
+            )
+        start = STAGE_ORDER.index(stage)
+        for name in STAGE_ORDER[start:]:
+            await self._run_stage(name, language)
 
     async def _run_stage(self, name: str, language: str | None = None) -> None:
         logger.info("stage_start name=%s", name)
