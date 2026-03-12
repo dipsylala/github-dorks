@@ -1,6 +1,6 @@
 # GitHub Vulnerability Hunting Pipeline
 
-An async Python pipeline that discovers, clones, and scans public GitHub repositories for potential vulnerabilities using regex pattern packs, then produces a ranked finding report for manual triage.
+An async Python pipeline that discovers, clones, and scans public GitHub repositories for potential vulnerabilities using regex pattern packs, then produces a ranked finding report for manual triage, or pushing into a SAST scanning pipeline.
 
 **Supported languages:** PHP, JavaScript, Python, Java, C#
 
