@@ -53,6 +53,14 @@ Pattern files: `config/patterns/<language>/cwe-<id>.yaml`
 
 ---
 
+## Language handling
+
+Language values are stored in `repositories.language` as lowercase config keys (`php`, `javascript`, `python`, `java`, `csharp`), normalised from the GitHub API's `primaryLanguage.name` at storage time in `_node_to_repository`. GitHub returns mixed-case names like `"C#"` and `"JavaScript"`.
+
+`repositories.language` is a plain `TEXT` column rather than a foreign key to a languages table. With only 5 distinct values across ~4,000 rows, a lookup table would add a join on every query for no practical benefit. Valid values are enforced at the CLI layer via `argparse choices` instead.
+
+---
+
 ## Stage design
 
 Every stage extends `BaseStage`, which provides:

@@ -56,7 +56,7 @@ class FrameworkDetector(BaseStage):
         self._client: GitHubGraphQLClient | None = None
         self._repo_dao: RepositoryDAO | None = None
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         repo_dao = RepositoryDAO(self._db)
         repos = await repo_dao.list_without_framework(limit=50_000)
         if not repos:

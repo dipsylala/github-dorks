@@ -26,6 +26,14 @@ scanning:
     - build
     - target
     - migrations
+    - tests
+    - test
+    - __tests__
+    - spec
+    - specs
+    - "*.Tests"
+    - "*.Tests.*"
+    - "*.Test"
   # Add extra templates to sweep more results (GitHub caps search at 1 000/query).
   query_templates:
     - "stars:>{min_stars} fork:false archived:false pushed:>{pushed_after} language:{language}"

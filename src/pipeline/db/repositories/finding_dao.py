@@ -130,25 +130,57 @@ class FindingDAO:
         )
         return [_row_to_finding(r) for r in rows]
 
-    async def list_unenriched(self, limit: int = 5000) -> list[Finding]:
+    async def list_unenriched(self, limit: int = 5000, language: str | None = None) -> list[Finding]:
         """Return findings whose snippet has not been populated yet."""
-        rows = await self._db.fetch(
-            "SELECT * FROM findings WHERE snippet = '' LIMIT ?", limit
-        )
+        if language:
+            rows = await self._db.fetch(
+                """
+                SELECT f.* FROM findings f
+                JOIN repositories r ON r.id = f.repository_id
+                WHERE f.snippet = '' AND r.language = ?
+                LIMIT ?
+                """,
+                language, limit,
+            )
+        else:
+            rows = await self._db.fetch(
+                "SELECT * FROM findings WHERE snippet = '' LIMIT ?", limit
+            )
         return [_row_to_finding(r) for r in rows]
 
-    async def list_unscored(self, limit: int = 5000) -> list[Finding]:
+    async def list_unscored(self, limit: int = 5000, language: str | None = None) -> list[Finding]:
         """Return findings whose score has not been calculated yet."""
-        rows = await self._db.fetch(
-            "SELECT * FROM findings WHERE score = 0 LIMIT ?", limit
-        )
+        if language:
+            rows = await self._db.fetch(
+                """
+                SELECT f.* FROM findings f
+                JOIN repositories r ON r.id = f.repository_id
+                WHERE f.score = 0 AND r.language = ?
+                LIMIT ?
+                """,
+                language, limit,
+            )
+        else:
+            rows = await self._db.fetch(
+                "SELECT * FROM findings WHERE score = 0 LIMIT ?", limit
+            )
         return [_row_to_finding(r) for r in rows]
 
-    async def list_top(self, limit: int = 1000) -> list[Finding]:
+    async def list_top(self, limit: int = 1000, language: str | None = None) -> list[Finding]:
         """Return the highest-scored findings via the review_queue view."""
-        rows = await self._db.fetch(
-            "SELECT * FROM review_queue LIMIT ?", limit
-        )
+        if language:
+            rows = await self._db.fetch(
+                """
+                SELECT * FROM review_queue
+                WHERE repository_id IN (SELECT id FROM repositories WHERE language = ?)
+                LIMIT ?
+                """,
+                language, limit,
+            )
+        else:
+            rows = await self._db.fetch(
+                "SELECT * FROM review_queue LIMIT ?", limit
+            )
         # review_queue columns are a superset of findings — map only Finding fields.
         results: list[Finding] = []
         for r in rows:
@@ -173,7 +205,7 @@ class FindingDAO:
             )
         return results
 
-    async def delete_duplicates(self) -> int:
+    async def delete_duplicates(self, language: str | None = None) -> int:
         """
         Remove duplicate findings (same repository_id + file_path + line_number).
 
@@ -181,15 +213,30 @@ class FindingDAO:
         into the winning row's ``matched_pattern_ids`` field (JSON array), then
         deletes all non-winners.  The winner is the row with the highest score;
         ties are broken deterministically by keeping the lowest ``id``.
+        When *language* is given, only findings from repos of that language
+        are processed.
 
         Returns the number of rows deleted.
         """
-        before = await self._db.fetchval("SELECT COUNT(*) FROM findings")
+        # Build reusable SQL fragments; user value always bound via ? parameter.
+        lang_where = (
+            "WHERE repository_id IN (SELECT id FROM repositories WHERE language = ?)"
+            if language else ""
+        )
+        lang_and = (
+            "AND repository_id IN (SELECT id FROM repositories WHERE language = ?)"
+            if language else ""
+        )
+        lp = (language,) if language else ()  # language param tuple
+
+        before = await self._db.fetchval(
+            f"SELECT COUNT(*) FROM findings {lang_where}", *lp
+        )
 
         # Step 1 — aggregate all pattern IDs for duplicate locations into the winner.
         # Uses GROUP_CONCAT (available since SQLite 3.0) for broad compatibility.
         rows = await self._db.fetch(
-            """
+            f"""
             SELECT
                 GROUP_CONCAT(pattern_id, ',') AS all_pattern_ids,
                 (
@@ -201,9 +248,11 @@ class FindingDAO:
                     LIMIT 1
                 ) AS winner_id
             FROM findings
+            {lang_where}
             GROUP BY repository_id, file_path, line_number
             HAVING COUNT(*) > 1
-            """
+            """,
+            *lp,
         )
         if rows:
             updates: list[tuple[str, str]] = []
@@ -223,9 +272,11 @@ class FindingDAO:
 
         # Step 2 — delete all non-winners; keep highest score, lowest id on tie.
         await self._db.execute(
-            """
+            f"""
             DELETE FROM findings
-            WHERE id NOT IN (
+            WHERE 1=1
+              {lang_and}
+              AND id NOT IN (
                 SELECT winner_id FROM (
                     SELECT (
                         SELECT id FROM findings AS f2
@@ -238,12 +289,16 @@ class FindingDAO:
                     FROM (
                         SELECT DISTINCT repository_id, file_path, line_number
                         FROM findings
+                        {lang_where}
                     ) AS grp
                 )
             )
-            """
+            """,
+            *lp, *lp,
         )
-        after = await self._db.fetchval("SELECT COUNT(*) FROM findings")
+        after = await self._db.fetchval(
+            f"SELECT COUNT(*) FROM findings {lang_where}", *lp
+        )
         deleted: int = (before or 0) - (after or 0)
         logger.info("Deduplication removed %d duplicate findings.", deleted)
         return deleted

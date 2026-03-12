@@ -38,7 +38,7 @@ class RepoFilter(BaseStage):
     def __init__(self, config: PipelineConfig, db: DatabasePool) -> None:
         super().__init__(config, db)
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         repo_dao = RepositoryDAO(self._db)
         batch_size = 5_000
         total_kept = total_deleted = 0

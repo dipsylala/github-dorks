@@ -35,7 +35,7 @@ class RepoCloner(BaseStage):
         self._repo_dao = RepositoryDAO(db)
         self._local_dao = LocalRepositoryDAO(db)
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         repos = await self._repo_dao.list_by_score()
 
         queue: asyncio.Queue[Repository] = asyncio.Queue()

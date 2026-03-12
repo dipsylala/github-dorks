@@ -15,16 +15,16 @@ Tremendous idea provided by Florian at https://github.com/dub-flow/github-dorks/
 The pipeline runs ten stages in sequence:
 
 ```text
-repo-discovery    → search GitHub for candidate repos
-repo-filter       → drop archived, tiny, or noise repos
-framework-detector → identify web frameworks via root files and topics
-repo-scorer       → rank repos by stars, freshness, and framework
-repo-cloner       → git clone --depth 1 into a local directory
-scanner           → run ripgrep against every pattern
-result-enricher   → capture ±3 lines of context around each match
-result-scorer     → calculate finding priority scores
-deduplicator      → collapse same-location matches, aggregate pattern IDs
-review-queue      → write findings_report.json ordered by combined score
+repo-discovery    → search GitHub for candidate repos via GraphQL (cursor-paginated)
+repo-filter       → drop archived, too-small, or too-large repos
+framework-detector → identify web frameworks via root files and repo topics
+repo-scorer       → rank repos by stars, freshness, and detected framework
+repo-cloner       → git clone --depth 1 into a local directory (120s timeout per repo)
+scanner           → run ripgrep against every (repo, pattern) pair; 16 workers by default
+result-enricher   → capture ±3 lines of source context around each match
+result-scorer     → score each finding (vuln type + path boost + repo score / 10)
+deduplicator      → collapse same-location matches; keep highest-scored, aggregate pattern IDs
+review-queue      → write findings_report.json ordered by combined score (top 1000 by default)
 ```
 
 Results are stored in a local SQLite database (`pipeline.db`) and exported to `findings_report.json`.
@@ -104,7 +104,25 @@ uv run vuln-pipeline --stage scan
 uv run vuln-pipeline --stage queue
 ```
 
-Available stages: `discover`, `filter`, `detect`, `score-repos`, `clone`, `scan`, `enrich`, `score-findings`, `dedup`, `queue`
+Available stages (in order): `discover`, `filter`, `detect`, `score-repos`, `clone`, `scan`, `enrich`, `score-findings`, `dedup`, `queue`
+
+**Filter by language:**
+
+Pass `--language` to restrict any stage (or the full pipeline) to one language.
+Valid values: `php`, `javascript`, `python`, `java`, `csharp`
+
+> **Note:** Filtering is based on the repository's primary language as reported by GitHub. A C# repository may still contain JavaScript or Python files, so findings in the output are not guaranteed to be exclusively that language. For precise language filtering on the output, filter by `pattern_id` — all pattern IDs embed the language (e.g., `ssrf_python_*`, `deser_php_*`, `path_java_*`, `sqli_cs_*`).
+
+```bash
+# Scan only C# repositories and patterns
+uv run vuln-pipeline --stage scan --language csharp
+
+# Run the full pipeline for PHP only
+uv run vuln-pipeline --language php
+
+# Export a report limited to Python findings
+uv run vuln-pipeline --stage queue --language python
+```
 
 **Custom config or verbosity:**
 

@@ -32,11 +32,22 @@ from .base import BaseStage
 logger = logging.getLogger(__name__)
 
 
+# Map GitHub API primaryLanguage names → config/CLI language keys.
+_GITHUB_LANG_TO_CONFIG: dict[str, str] = {
+    "c#":         "csharp",
+    "javascript": "javascript",
+    "php":        "php",
+    "python":     "python",
+    "java":       "java",
+}
+
+
 def _node_to_repository(node: dict, fallback_language: str) -> Repository:
     """Convert a raw GraphQL repository node to a :class:`Repository`."""
     lang: str = (
         (node.get("primaryLanguage") or {}).get("name") or fallback_language
     )
+    lang = _GITHUB_LANG_TO_CONFIG.get(lang.lower(), lang.lower())
     pushed_raw: str = node["pushedAt"]  # ISO-8601, e.g. "2024-01-15T10:30:00Z"
     last_push = datetime.fromisoformat(pushed_raw.replace("Z", "+00:00"))
     disk_kb: int = node.get("diskUsage") or 0
@@ -56,7 +67,7 @@ def _node_to_repository(node: dict, fallback_language: str) -> Repository:
 class RepoDiscovery(BaseStage):
     """Discovers candidate repositories via the GitHub GraphQL Search API."""
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         cfg = self._config
         dao = RepositoryDAO(self._db)
 

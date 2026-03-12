@@ -31,6 +31,7 @@ class Deduplicator(BaseStage):
     def __init__(self, config: PipelineConfig, db: DatabasePool) -> None:
         super().__init__(config, db)
 
-    async def run(self) -> None:
-        deleted = await FindingDAO(self._db).delete_duplicates()
+    async def run(self, language: str | None = None) -> None:
+        self._logger.info("dedup_start")
+        deleted = await FindingDAO(self._db).delete_duplicates(language=language)
         self._logger.info("dedup_complete deleted=%d", deleted)

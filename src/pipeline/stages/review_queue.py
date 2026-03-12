@@ -35,8 +35,9 @@ class ReviewQueue(BaseStage):
     def __init__(self, config: PipelineConfig, db: DatabasePool) -> None:
         super().__init__(config, db)
 
-    async def run(self) -> None:
-        findings = await self.get_top_findings()
+    async def run(self, language: str | None = None) -> None:
+        self._logger.info("queue_start")
+        findings = await self.get_top_findings(language=language)
         self._logger.info("review_queue_ready count=%d", len(findings))
         if findings:
             top = findings[0]
@@ -53,9 +54,9 @@ class ReviewQueue(BaseStage):
             json.dump([asdict(f) for f in findings], fh, indent=2, default=str)
         self._logger.info("report_written path=%s", report_path)
 
-    async def get_top_findings(self, limit: int = 1000) -> list[Finding]:
+    async def get_top_findings(self, limit: int = 1000, language: str | None = None) -> list[Finding]:
         """Return the top *limit* findings ordered by combined score descending.
 
         Queries the ``review_queue`` view defined in ``schema.sql``.
         """
-        return await FindingDAO(self._db).list_top(limit)
+        return await FindingDAO(self._db).list_top(limit, language=language)

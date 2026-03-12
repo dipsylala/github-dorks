@@ -36,6 +36,13 @@ _RG_ERROR_CODE = 2
 # Flush findings to DB after accumulating this many.
 _BATCH_SIZE = 500
 
+# Log a progress line every this many completed (repo, pattern) pairs.
+_PROGRESS_INTERVAL = 1000
+
+# Namespace for deterministic finding UUIDs (UUID5).
+# Fixed value — do not change, or all existing finding IDs will shift.
+_FINDING_NS = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # uuid.NAMESPACE_URL
+
 # Map pattern language names → ripgrep --type values.
 # Only source files for the repo's language are scanned, reducing false
 # positives from vendored translations, docs, and unrelated language files.
@@ -65,9 +72,17 @@ class Scanner(BaseStage):
         self._ignore_args: list[str] = []
         for ignored in config.scanning.ignored_paths:
             self._ignore_args += ["--glob", f"!{ignored}"]
+        self._completed = 0
+        self._total = 0
 
-    async def run(self) -> None:
-        local_repos = await self._local_dao.list_all()
+    async def run(self, language: str | None = None) -> None:
+        if language:
+            local_repos = await self._local_dao.list_by_language(language)
+            patterns = [p for p in self._patterns if p.language.lower() == language.lower()]
+        else:
+            local_repos = await self._local_dao.list_all()
+            patterns = self._patterns
+
         if not local_repos:
             self._logger.info("No cloned repositories found — skipping scan.")
             return
@@ -75,17 +90,20 @@ class Scanner(BaseStage):
         self._logger.info(
             "scan_start repos=%d patterns=%d workers=%d",
             len(local_repos),
-            len(self._patterns),
+            len(patterns),
             self._config.worker_pools.scan_workers,
         )
 
+        self._total = len(local_repos) * len(patterns)
+        self._completed = 0
+
         queue: asyncio.Queue[tuple[LocalRepository, Pattern]] = asyncio.Queue()
         for repo in local_repos:
-            for pattern in self._patterns:
+            for pattern in patterns:
                 await queue.put((repo, pattern))
 
         await self._run_workers(queue, self._config.worker_pools.scan_workers)
-        self._logger.info("scan_complete")
+        self._logger.info("scan_complete total=%d", self._total)
 
     async def _process(self, item: object) -> None:
         assert isinstance(item, tuple) and len(item) == 2
@@ -101,6 +119,18 @@ class Scanner(BaseStage):
                 local_repo.repository_id,
                 pattern.id,
                 len(findings),
+            )
+
+        self._completed += 1
+        if self._total and (
+            self._completed % _PROGRESS_INTERVAL == 0
+            or self._completed == self._total
+        ):
+            self._logger.info(
+                "scan_progress completed=%d/%d (%.0f%%)",
+                self._completed,
+                self._total,
+                self._completed * 100 / self._total,
             )
 
     # ------------------------------------------------------------------ #
@@ -232,9 +262,14 @@ def _parse_rg_output(
         else:
             file_path = abs_path
 
+        # Deterministic ID — same (repo, file, line, pattern) always produces
+        # the same UUID, so re-running the scan stage is idempotent.
+        finding_key = f"{repository_id}:{file_path}:{line_number}:{pattern.id}"
+        finding_id = str(uuid.uuid5(_FINDING_NS, finding_key))
+
         findings.append(
             Finding(
-                id=str(uuid.uuid4()),
+                id=finding_id,
                 repository_id=repository_id,
                 file_path=file_path,
                 line_number=line_number,

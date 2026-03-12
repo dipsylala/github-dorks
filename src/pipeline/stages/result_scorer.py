@@ -64,7 +64,7 @@ class ResultScorer(BaseStage):
         self._finding_dao = FindingDAO(db)
         self._repo_dao = RepositoryDAO(db)
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         # Build a full repo_id → repo_score lookup in one DB round-trip.
         all_repos = await self._repo_dao.list_by_score(limit=100_000)
         repo_scores: dict[str, int] = {r.id: r.score for r in all_repos}
@@ -73,9 +73,10 @@ class ResultScorer(BaseStage):
         page_size = 5_000
         offset = 0
         total_scored = 0
+        self._logger.info("score_findings_start")
 
         while True:
-            findings = await self._finding_dao.list_unscored(limit=page_size)
+            findings = await self._finding_dao.list_unscored(limit=page_size, language=language)
             if not findings:
                 break
 
@@ -91,6 +92,7 @@ class ResultScorer(BaseStage):
 
             total_scored += len(pairs)
             offset += page_size
+            self._logger.info("score_findings_progress scored=%d", total_scored)
 
             # If fewer findings came back than the page size we're done.
             if len(findings) < page_size:

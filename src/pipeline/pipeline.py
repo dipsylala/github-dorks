@@ -112,7 +112,7 @@ class Pipeline:
     # Execution
     # ------------------------------------------------------------------ #
 
-    async def run(self, stage: str = "all") -> None:
+    async def run(self, stage: str = "all", language: str | None = None) -> None:
         """Run *stage* or, when *stage* is ``"all"``, every stage in order.
 
         Raises :exc:`ValueError` for unknown stage names.
@@ -120,19 +120,19 @@ class Pipeline:
         """
         if stage == "all":
             for name in STAGE_ORDER:
-                await self._run_stage(name)
+                await self._run_stage(name, language)
         else:
             if stage not in self._stages:
                 valid = ", ".join(STAGE_ORDER)
                 raise ValueError(
                     f"Unknown stage '{stage}'. Valid choices: {valid}, all."
                 )
-            await self._run_stage(stage)
+            await self._run_stage(stage, language)
 
-    async def _run_stage(self, name: str) -> None:
+    async def _run_stage(self, name: str, language: str | None = None) -> None:
         logger.info("stage_start name=%s", name)
         try:
-            await self._stages[name].run()
+            await self._stages[name].run(language=language)
         except Exception:
             logger.exception("stage_failed name=%s", name)
             raise

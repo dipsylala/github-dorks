@@ -28,7 +28,7 @@ class BaseStage(ABC):
         )
 
     @abstractmethod
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         """Execute the stage's main logic."""
         ...
 

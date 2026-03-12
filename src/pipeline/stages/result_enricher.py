@@ -25,6 +25,7 @@ from .base import BaseStage
 logger = logging.getLogger(__name__)
 
 _CONTEXT_LINES = 3
+_PROGRESS_INTERVAL = 500
 
 
 class ResultEnricher(BaseStage):
@@ -32,8 +33,10 @@ class ResultEnricher(BaseStage):
 
     def __init__(self, config: PipelineConfig, db: DatabasePool) -> None:
         super().__init__(config, db)
+        self._completed = 0
+        self._total = 0
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         finding_dao = FindingDAO(self._db)
         local_dao = LocalRepositoryDAO(self._db)
 
@@ -43,12 +46,15 @@ class ResultEnricher(BaseStage):
             lr.repository_id: lr.local_path for lr in local_repos
         }
 
-        findings = await finding_dao.list_unenriched()
+        findings = await finding_dao.list_unenriched(language=language)
         if not findings:
             self._logger.info("enrich_skip no_unenriched_findings")
             return
 
         self._logger.info("enrich_start findings=%d", len(findings))
+
+        self._total = len(findings)
+        self._completed = 0
 
         queue: asyncio.Queue[tuple[Finding, str]] = asyncio.Queue()
         for finding in findings:
@@ -76,6 +82,18 @@ class ResultEnricher(BaseStage):
         snippet = self.extract_snippet(full_path, finding.line_number)
         if snippet:
             await FindingDAO(self._db).update_snippet(finding.id, snippet)
+
+        self._completed += 1
+        if self._total and (
+            self._completed % _PROGRESS_INTERVAL == 0
+            or self._completed == self._total
+        ):
+            self._logger.info(
+                "enrich_progress completed=%d/%d (%.0f%%)",
+                self._completed,
+                self._total,
+                self._completed * 100 / self._total,
+            )
 
     # ------------------------------------------------------------------ #
     # Helpers

@@ -35,7 +35,7 @@ class RepoScorer(BaseStage):
         super().__init__(config, db)
         self._repo_dao = RepositoryDAO(self._db)
 
-    async def run(self) -> None:
+    async def run(self, language: str | None = None) -> None:
         # Build a local_path map — populated after cloning; empty on first run.
         local_repos = await LocalRepositoryDAO(self._db).list_all()
         local_paths: dict[str, str] = {lr.repository_id: lr.local_path for lr in local_repos}

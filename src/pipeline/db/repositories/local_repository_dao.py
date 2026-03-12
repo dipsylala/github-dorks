@@ -65,6 +65,19 @@ class LocalRepositoryDAO:
         rows = await self._db.fetch("SELECT * FROM local_repositories")
         return [_row_to_local_repository(r) for r in rows]
 
+    async def list_by_language(self, language: str) -> list[LocalRepository]:
+        """Return local clone records for repositories of *language*."""
+        rows = await self._db.fetch(
+            """
+            SELECT lr.*
+            FROM local_repositories lr
+            JOIN repositories r ON r.id = lr.repository_id
+            WHERE r.language = ?
+            """,
+            language,
+        )
+        return [_row_to_local_repository(r) for r in rows]
+
     async def delete(self, repository_id: str) -> None:
         """Remove the clone record for *repository_id* (e.g. after disk cleanup)."""
         await self._db.execute(
