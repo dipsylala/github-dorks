@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import AsyncGenerator
 from datetime import UTC, datetime
 from typing import Any
@@ -81,6 +82,10 @@ class GitHubGraphQLClient:
         self._pause = rate_limit_pause_seconds
         self._min_remaining = min_remaining
         self._session: aiohttp.ClientSession | None = None
+        # Shared REST rate-limit state: monotonic timestamp until which we are
+        # rate-limited.  Only the first 403 that advances this window logs a
+        # warning; all others wait silently.
+        self._rest_limited_until: float = 0.0
 
     # ------------------------------------------------------------------ #
     # Async context manager
@@ -121,6 +126,10 @@ class GitHubGraphQLClient:
         owner, repo = parts[-2], parts[-1]
         api_url = f"https://api.github.com/repos/{owner}/{repo}/topics"
 
+        wait = self._rest_limited_until - time.monotonic()
+        if wait > 0:
+            await asyncio.sleep(wait)
+
         try:
             async with self._session.get(
                 api_url,
@@ -132,11 +141,8 @@ class GitHubGraphQLClient:
                     if isinstance(names, list):
                         return [str(n) for n in names]
                 elif resp.status == 403:
-                    remaining = resp.headers.get("X-RateLimit-Remaining", "?")
-                    logger.warning(
-                        "rest_rate_limit_topics repo=%s remaining=%s", repo_url, remaining
-                    )
-                    await asyncio.sleep(self._pause)
+                    remaining = resp.headers.get("X-RateLimit-Remaining", "0")
+                    await self._handle_rest_rate_limit(resp.headers, repo_url, "rest_rate_limit_topics")
                 elif resp.status == 404:
                     pass  # private / deleted repo
         except aiohttp.ClientError as exc:
@@ -160,6 +166,10 @@ class GitHubGraphQLClient:
         owner, repo = parts[-2], parts[-1]
         api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/"
 
+        wait = self._rest_limited_until - time.monotonic()
+        if wait > 0:
+            await asyncio.sleep(wait)
+
         try:
             async with self._session.get(api_url) as resp:
                 if resp.status == 200:
@@ -171,11 +181,7 @@ class GitHubGraphQLClient:
                             if isinstance(item, dict) and "name" in item
                         ]
                 elif resp.status == 403:
-                    remaining = resp.headers.get("X-RateLimit-Remaining", "?")
-                    logger.warning(
-                        "rest_rate_limit repo=%s remaining=%s", repo_url, remaining
-                    )
-                    await asyncio.sleep(self._pause)
+                    await self._handle_rest_rate_limit(resp.headers, repo_url, "rest_rate_limit")
                 elif resp.status == 404:
                     pass  # private / deleted repo — skip silently
                 else:
@@ -346,3 +352,42 @@ class GitHubGraphQLClient:
             rate_limit["resetAt"],
         )
         await asyncio.sleep(sleep_secs)
+
+    async def _handle_rest_rate_limit(
+        self,
+        headers: "aiohttp.CIMultiDictProxy[str]",
+        repo_url: str,
+        log_key: str,
+    ) -> None:
+        """Handle a 403 REST rate-limit response.
+
+        Calculates the sleep duration from ``X-RateLimit-Reset`` when available,
+        otherwise falls back to ``self._pause``.  Logs a WARNING only when this
+        call is the one that advances the shared ``_rest_limited_until`` window,
+        so concurrent calls that hit the same rate-limit window are silent.
+        """
+        remaining = headers.get("X-RateLimit-Remaining", "0")
+        reset_header = headers.get("X-RateLimit-Reset")
+        if reset_header:
+            try:
+                reset_ts = float(reset_header)
+                sleep_secs = max(0.0, reset_ts - time.time()) + 5  # +5s buffer
+            except ValueError:
+                sleep_secs = float(self._pause)
+        else:
+            sleep_secs = float(self._pause)
+
+        new_until = time.monotonic() + sleep_secs
+        if new_until > self._rest_limited_until:
+            self._rest_limited_until = new_until
+            logger.warning(
+                "%s repo=%s remaining=%s — pausing %.0fs until rate limit resets",
+                log_key,
+                repo_url,
+                remaining,
+                sleep_secs,
+            )
+
+        wait = self._rest_limited_until - time.monotonic()
+        if wait > 0:
+            await asyncio.sleep(wait)

@@ -8,7 +8,6 @@ An async Python pipeline that discovers, clones, and scans public GitHub reposit
 
 Tremendous idea provided by Florian at https://github.com/dub-flow/github-dorks/
 
-
 ---
 
 ## How it works
