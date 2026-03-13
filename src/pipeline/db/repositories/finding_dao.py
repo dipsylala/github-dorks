@@ -12,6 +12,45 @@ from pipeline.models.finding import Finding
 logger = logging.getLogger(__name__)
 
 
+def _build_github_url(
+    repo_url: str | None,
+    file_path: str,
+    line_number: int,
+    local_path: str | None = None,
+) -> str | None:
+    """Return a GitHub blob URL for *file_path* at *line_number*, or None.
+
+    Handles both new-style relative POSIX paths (e.g. ``src/app/foo.py``) and
+    legacy absolute paths (e.g. ``e:\\temp\\146633589\\src\\app\\foo.py``).
+    When *local_path* is supplied (the clone root, e.g. ``e:\\temp\\146633589``)
+    it is stripped as a prefix, which is the most reliable approach.
+    """
+    if not repo_url or not file_path:
+        return None
+    from pathlib import Path, PurePosixPath
+
+    def _strip_absolute(p: Path) -> str:
+        """Convert an absolute path to a relative POSIX string, stripping any drive letter."""
+        posix = p.as_posix()
+        # Strip Windows drive letter, e.g. "e:/temp/..." → "temp/..."
+        if len(posix) >= 2 and posix[1] == ":":
+            return posix[2:].lstrip("/")
+        return posix.lstrip("/")
+
+    p = Path(file_path)
+    if p.is_absolute():
+        if local_path:
+            try:
+                relative = PurePosixPath(p.relative_to(local_path)).as_posix()
+            except ValueError:
+                relative = _strip_absolute(p)
+        else:
+            relative = _strip_absolute(p)
+    else:
+        relative = PurePosixPath(file_path).as_posix().lstrip("/")
+    return f"{repo_url}/blob/HEAD/{relative}#L{line_number}"
+
+
 def _row_to_finding(row: object) -> Finding:
     assert isinstance(row, sqlite3.Row)
     matched_raw: str = row["matched_pattern_ids"] or "[]"
@@ -171,15 +210,23 @@ class FindingDAO:
         if language:
             rows = await self._db.fetch(
                 """
-                SELECT * FROM review_queue
-                WHERE repository_id IN (SELECT id FROM repositories WHERE language = ?)
+                SELECT rq.*, lr.local_path
+                FROM review_queue rq
+                LEFT JOIN local_repositories lr ON lr.repository_id = rq.repository_id
+                WHERE rq.repository_id IN (SELECT id FROM repositories WHERE language = ?)
                 LIMIT ?
                 """,
                 language, limit,
             )
         else:
             rows = await self._db.fetch(
-                "SELECT * FROM review_queue LIMIT ?", limit
+                """
+                SELECT rq.*, lr.local_path
+                FROM review_queue rq
+                LEFT JOIN local_repositories lr ON lr.repository_id = rq.repository_id
+                LIMIT ?
+                """,
+                limit,
             )
         # review_queue columns are a superset of findings — map only Finding fields.
         results: list[Finding] = []
@@ -201,6 +248,10 @@ class FindingDAO:
                     snippet=r["snippet"],
                     matched_pattern_ids=matched,
                     score=r["finding_score"],
+                    github_url=_build_github_url(
+                        r["repository_url"], r["file_path"], r["line_number"],
+                        local_path=r["local_path"],
+                    ),
                 )
             )
         return results

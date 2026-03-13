@@ -59,3 +59,18 @@ class TestExtractSnippet:
         f.write_text("only line", encoding="utf-8")
         snippet = stage.extract_snippet(str(f), 1)
         assert snippet == "only line"
+
+    def test_oserror_during_read_returns_empty_string(self, stage, tmp_path, monkeypatch):
+        # Simulate an OSError raised by read_text (e.g. permission denied).
+        from pathlib import Path as _Path
+        real_is_file = _Path.is_file
+
+        def _patched_read_text(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+            raise OSError("permission denied")
+
+        f = tmp_path / "locked.php"
+        f.write_text("secret", encoding="utf-8")
+        monkeypatch.setattr(_Path, "read_text", _patched_read_text)
+
+        result = stage.extract_snippet(str(f), 1)
+        assert result == ""

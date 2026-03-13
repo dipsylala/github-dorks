@@ -108,3 +108,27 @@ class TestParseRgOutput:
         raw = b"\n\n" + line + b"\n\n"
         findings = _parse_rg_output(raw, repository_id="r1", pattern=pattern, repo_root="/tmp/repos/1")
         assert len(findings) == 1
+
+    def test_deterministic_id_same_inputs_same_uuid(self, pattern):
+        # Calling _parse_rg_output twice with identical input must produce
+        # the same finding IDs — the UUID5 must be stable, not random.
+        line = _match_line("/tmp/repos/1/src/app.php", 42, "exec(input);\n")
+        raw = line
+        ids_first  = [f.id for f in _parse_rg_output(raw, repository_id="r1", pattern=pattern, repo_root="/tmp/repos/1")]
+        ids_second = [f.id for f in _parse_rg_output(raw, repository_id="r1", pattern=pattern, repo_root="/tmp/repos/1")]
+        assert ids_first == ids_second
+
+    def test_different_pattern_produces_different_id(self, pattern):
+        # Changing only the pattern must produce a different finding ID.
+        other = Pattern(
+            id="other-pattern",
+            name="other",
+            regex=r"exec\(",
+            vulnerability_type="command_injection",
+            severity_score=5,
+            language="php",
+        )
+        line = _match_line("/tmp/repos/1/app.php", 1, "code\n")
+        id1 = _parse_rg_output(line, repository_id="r1", pattern=pattern, repo_root="/tmp/repos/1")[0].id
+        id2 = _parse_rg_output(line, repository_id="r1", pattern=other, repo_root="/tmp/repos/1")[0].id
+        assert id1 != id2

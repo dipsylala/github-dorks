@@ -16,3 +16,4 @@ class Finding:
     snippet: str
     matched_pattern_ids: list[str] = field(default_factory=list)
     score: int = 0
+    github_url: str | None = None

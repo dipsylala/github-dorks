@@ -31,7 +31,7 @@ class TestNodeToRepository:
         assert repo.id == "12345"
         assert repo.name == "myapp"
         assert repo.stars == 500
-        assert repo.language == "Python"
+        assert repo.language == "python"
         assert repo.size_mb == 10
 
     def test_primary_language_none_uses_fallback(self):

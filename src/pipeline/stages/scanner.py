@@ -17,7 +17,7 @@ import asyncio
 import json
 import logging
 import uuid
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from pipeline.config import PipelineConfig
 from pipeline.db import DatabasePool, FindingDAO, LocalRepositoryDAO
@@ -237,7 +237,6 @@ def _parse_rg_output(
         }
     """
     findings: list[Finding] = []
-    repo_root_prefix = repo_root.rstrip("/\\") + "/"
 
     for line in raw.splitlines():
         line = line.strip()
@@ -256,10 +255,11 @@ def _parse_rg_output(
         line_number: int = data.get("line_number", 0)
         matched_text: str = (data.get("lines") or {}).get("text", "").rstrip("\n")
 
-        # Store relative path so findings are portable across machines.
-        if abs_path.startswith(repo_root_prefix):
-            file_path = abs_path[len(repo_root_prefix):]
-        else:
+        # Store as a relative POSIX path so findings are portable across machines
+        # and GitHub URLs can be constructed without needing the local clone root.
+        try:
+            file_path = PurePosixPath(Path(abs_path).relative_to(repo_root)).as_posix()
+        except ValueError:
             file_path = abs_path
 
         # Deterministic ID — same (repo, file, line, pattern) always produces
