@@ -197,6 +197,26 @@ patterns:
 
 ---
 
+## Why not just use grep.app?
+
+[grep.app](https://grep.app) is a code search engine that indexes public GitHub repos and supports regex search — essentially ripgrep-over-GitHub without cloning. It has an undocumented JSON API (`https://grep.app/api/search?q=...&regexp=true`) that could theoretically replace both the `discover` and `scan` stages.
+
+In practice, cloning is better for this pipeline:
+
+| Factor | grep.app | Clone + rg |
+| --- | --- | --- |
+| API stability | Undocumented, unofficial | GitHub API (official) |
+| Rate limits | Aggressive | Controlled via token |
+| Context window | ~1 line snippet | Full file (±N lines) |
+| Multi-pattern | 1 pattern per request | All patterns in one pass |
+| Framework detection | Not possible | Full `package.json`, `pom.xml` etc. |
+| Result freshness | Cached (days old) | Current HEAD |
+| Deduplication | Harder | Owned locally in SQLite |
+
+**Where grep.app could help:** as an alternative `repo_discovery` source. GitHub's built-in code search has poor regex support; grep.app handles it better. As a future TODO, we could query grep.app to find candidate repos containing a pattern and then feed those repo URLs into the existing clone/scan pipeline — getting better discovery without sacrificing any of the downstream analysis.
+
+---
+
 ## Development
 
 See [docs/DESIGN.md](docs/DESIGN.md) for architecture details, design decisions, and contribution guidelines.
