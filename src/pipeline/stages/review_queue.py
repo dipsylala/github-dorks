@@ -75,7 +75,7 @@ class ReviewQueue(BaseStage):
             if f.vulnerability_type not in entry["vulnerability_types"]:
                 entry["vulnerability_types"].append(f.vulnerability_type)
 
-        repo_list = sorted(repos.values(), key=lambda r: r["top_score"], reverse=True)
+        repo_list = sorted(repos.values(), key=lambda r: r["finding_count"], reverse=True)
         repo_report_path = report_path.with_name("repo_report.json")
         with repo_report_path.open("w", encoding="utf-8") as fh:
             json.dump(repo_list, fh, indent=2, default=str)
