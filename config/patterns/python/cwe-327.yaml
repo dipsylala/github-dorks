@@ -1,0 +1,52 @@
+language: python
+cwe_id: "CWE-327"
+cwe_name: "Use of a Broken or Risky Cryptographic Algorithm"
+
+patterns:
+  - id: crypto_python_hashlib_md5
+    name: hashlib MD5 usage
+    regex: 'hashlib\.md5\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_python_hashlib_sha1
+    name: hashlib SHA-1 usage
+    regex: 'hashlib\.sha1\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_python_hashlib_new_weak
+    name: hashlib.new() with weak algorithm
+    regex: 'hashlib\.new\s*\(\s*[''"](?:md5|sha1|sha-1|md4)[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_python_pycrypto_md5
+    name: PyCrypto/PyCryptodome MD5
+    regex: 'Crypto\.Hash\.MD5\.new\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_python_pycrypto_sha1
+    name: PyCrypto/PyCryptodome SHA-1
+    regex: 'Crypto\.Hash\.SHA\.new\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_python_des_cipher
+    name: PyCrypto/PyCryptodome DES cipher
+    regex: 'Crypto\.Cipher\.DES\.new\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 6
+
+  - id: crypto_python_cryptography_md5
+    name: cryptography library MD5 digest
+    regex: 'hashes\.MD5\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_python_cryptography_sha1
+    name: cryptography library SHA1 digest
+    regex: 'hashes\.SHA1\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5

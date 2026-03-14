@@ -30,13 +30,15 @@ from __future__ import annotations
 import logging
 
 from pipeline.config import PipelineConfig
-from pipeline.db import DatabasePool, FindingDAO, RepositoryDAO
+from pipeline.db import DatabasePool, FindingDAO
 from pipeline.models import Finding
 
 from .base import BaseStage
 
 logger = logging.getLogger(__name__)
 
+# NOTE: These dicts also define the scoring logic embedded in FindingDAO.score_all().
+# Keep both in sync if either changes.
 _VULN_BASE_SCORES: dict[str, int] = {
     "command_injection": 10,
     "deserialization":    9,
@@ -52,9 +54,6 @@ _PATH_BOOSTS: dict[str, int] = {
     "routes/":      3,
 }
 
-# Number of score updates sent to the DB in one executemany call.
-_BATCH_SIZE = 500
-
 
 class ResultScorer(BaseStage):
     """Scores deduplicated findings and persists the result."""
@@ -62,43 +61,20 @@ class ResultScorer(BaseStage):
     def __init__(self, config: PipelineConfig, db: DatabasePool) -> None:
         super().__init__(config, db)
         self._finding_dao = FindingDAO(db)
-        self._repo_dao = RepositoryDAO(db)
 
     async def run(self, language: str | None = None) -> None:
-        # Build a full repo_id → repo_score lookup in one DB round-trip.
-        all_repos = await self._repo_dao.list_by_score(limit=100_000)
-        repo_scores: dict[str, int] = {r.id: r.score for r in all_repos}
+        total = await self._finding_dao.count_unscored(language=language)
+        self._logger.info("score_findings_start total=%d", total)
 
-        # Process findings in pages to keep memory bounded.
-        page_size = 5_000
-        offset = 0
-        total_scored = 0
-        self._logger.info("score_findings_start")
+        if total == 0:
+            self._logger.info("score_findings_complete total=0")
+            return
 
-        while True:
-            findings = await self._finding_dao.list_unscored(limit=page_size, language=language)
-            if not findings:
-                break
+        # Score all findings in a single SQL UPDATE — the formula is evaluated
+        # entirely inside SQLite, avoiding per-row Python round-trips.
+        await self._finding_dao.score_all(language=language)
 
-            pairs: list[tuple[int, str]] = []
-            for finding in findings:
-                repo_score = repo_scores.get(finding.repository_id, 0)
-                score = self.compute_score(finding, repo_score)
-                pairs.append((score, finding.id))
-
-            # Flush in batches so WAL write transactions stay small.
-            for i in range(0, len(pairs), _BATCH_SIZE):
-                await self._finding_dao.update_score_many(pairs[i : i + _BATCH_SIZE])
-
-            total_scored += len(pairs)
-            offset += page_size
-            self._logger.info("score_findings_progress scored=%d", total_scored)
-
-            # If fewer findings came back than the page size we're done.
-            if len(findings) < page_size:
-                break
-
-        self._logger.info("score_findings_complete total=%d", total_scored)
+        self._logger.info("score_findings_complete total=%d", total)
 
     # ------------------------------------------------------------------ #
     # Public helper — usable in tests without a DB

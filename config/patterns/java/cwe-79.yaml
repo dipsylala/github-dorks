@@ -1,0 +1,34 @@
+language: java
+cwe_id: "CWE-79"
+cwe_name: "Improper Neutralization of Input During Web Page Generation (XSS)"
+
+patterns:
+  - id: xss_java_response_writer_getparam
+    name: HttpServletResponse writer with getParameter
+    regex: 'getWriter\(\)\s*\.\s*(?:write|println)\s*\(.*getParameter\s*\('
+    vulnerability_type: xss
+    severity_score: 8
+
+  - id: xss_java_printwriter_getparam
+    name: PrintWriter output with request parameter
+    regex: 'PrintWriter.*\n.*request\.getParameter|request\.getParameter.*\n.*PrintWriter'
+    vulnerability_type: xss
+    severity_score: 7
+
+  - id: xss_java_response_getwriter_variable
+    name: response.getWriter().print/write with variable
+    regex: 'response\.getWriter\(\)\s*\.\s*(?:print|println|write)\s*\(\s*(?!["''])'
+    vulnerability_type: xss
+    severity_score: 7
+
+  - id: xss_java_out_print_getparam
+    name: out.print/println with getParameter
+    regex: '\bout\s*\.\s*(?:print|println)\s*\(.*getParameter\s*\('
+    vulnerability_type: xss
+    severity_score: 8
+
+  - id: xss_java_string_format_html
+    name: String.format used to build HTML with parameter
+    regex: 'String\.format\s*\(\s*"[^"]*<[^"]*"\s*,.*getParameter\s*\('
+    vulnerability_type: xss
+    severity_score: 7

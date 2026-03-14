@@ -1,0 +1,34 @@
+language: javascript
+cwe_id: "CWE-327"
+cwe_name: "Use of a Broken or Risky Cryptographic Algorithm"
+
+patterns:
+  - id: crypto_js_createhash_md5
+    name: Node.js crypto.createHash('md5')
+    regex: 'crypto\.createHash\s*\(\s*[''"]md5[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_js_createhash_sha1
+    name: Node.js crypto.createHash('sha1')
+    regex: 'crypto\.createHash\s*\(\s*[''"]sha1[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_js_createcipher_des
+    name: Node.js crypto.createCipher DES/RC2/RC4
+    regex: 'crypto\.createCipher(?:iv)?\s*\(\s*[''"](?:des|rc2|rc4|bf|blowfish)[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 7
+
+  - id: crypto_js_md5_library
+    name: md5 npm package usage
+    regex: '\brequire\s*\(\s*[''"]md5[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 4
+
+  - id: crypto_js_sjcl_md5
+    name: SJCL MD5 or SHA1 usage
+    regex: 'sjcl\.hash\.(?:md5|sha1)\b'
+    vulnerability_type: weak_crypto
+    severity_score: 5

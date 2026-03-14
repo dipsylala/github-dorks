@@ -1,0 +1,52 @@
+language: python
+cwe_id: "CWE-95"
+cwe_name: "Improper Neutralization of Directives in Dynamically Evaluated Code"
+
+patterns:
+  - id: codeinjection_python_eval_request
+    name: eval() with request data
+    regex: 'eval\s*\(\s*request\b'
+    vulnerability_type: code_injection
+    severity_score: 10
+
+  - id: codeinjection_python_exec_request
+    name: exec() with request data
+    regex: 'exec\s*\(\s*request\b'
+    vulnerability_type: code_injection
+    severity_score: 10
+
+  - id: codeinjection_python_compile_request
+    name: compile() with request data
+    regex: 'compile\s*\(\s*request\b'
+    vulnerability_type: code_injection
+    severity_score: 9
+
+  - id: codeinjection_python_eval_fstring
+    name: eval() with f-string (interpolated code)
+    regex: 'eval\s*\(\s*f[''"]'
+    vulnerability_type: code_injection
+    severity_score: 8
+
+  - id: codeinjection_python_exec_fstring
+    name: exec() with f-string (interpolated code)
+    regex: 'exec\s*\(\s*f[''"]'
+    vulnerability_type: code_injection
+    severity_score: 8
+
+  - id: codeinjection_python_eval_variable
+    name: eval() with non-literal argument
+    regex: 'eval\s*\(\s*(?![\x27\x22])(?!b[\x27\x22])'
+    vulnerability_type: code_injection
+    severity_score: 7
+
+  - id: codeinjection_python_exec_variable
+    name: exec() with non-literal argument
+    regex: 'exec\s*\(\s*(?![\x27\x22])(?!b[\x27\x22])'
+    vulnerability_type: code_injection
+    severity_score: 7
+
+  - id: codeinjection_python_jinja2_from_string
+    name: Jinja2 Template.from_string with variable
+    regex: 'Template\s*\.\s*from_string\s*\(\s*(?![\x27\x22])'
+    vulnerability_type: code_injection
+    severity_score: 8

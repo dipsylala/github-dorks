@@ -1,0 +1,46 @@
+language: java
+cwe_id: "CWE-611"
+cwe_name: "Improper Restriction of XML External Entity Reference"
+
+patterns:
+  - id: xxe_java_documentbuilderfactory_new
+    name: DocumentBuilderFactory without secure features
+    regex: 'DocumentBuilderFactory\.newInstance\s*\(\s*\)'
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_java_saxparserfactory_new
+    name: SAXParserFactory without secure features
+    regex: 'SAXParserFactory\.newInstance\s*\(\s*\)'
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_java_xmlinputfactory_external_entities
+    name: XMLInputFactory enabling external entity support
+    regex: 'setProperty\s*\(\s*"javax\.xml\.stream\.isSupportingExternalEntities"\s*,\s*true\s*\)'
+    vulnerability_type: xxe
+    severity_score: 9
+
+  - id: xxe_java_xmlinputfactory_support_dtd
+    name: XMLInputFactory enabling DTD support
+    regex: 'setProperty\s*\(\s*XMLInputFactory\.SUPPORT_DTD\s*,\s*true\s*\)'
+    vulnerability_type: xxe
+    severity_score: 8
+
+  - id: xxe_java_expand_entity_refs
+    name: setExpandEntityReferences(true)
+    regex: 'setExpandEntityReferences\s*\(\s*true\s*\)'
+    vulnerability_type: xxe
+    severity_score: 9
+
+  - id: xxe_java_transformerfactory_new
+    name: TransformerFactory without secure processing
+    regex: 'TransformerFactory\.newInstance\s*\(\s*\)'
+    vulnerability_type: xxe
+    severity_score: 6
+
+  - id: xxe_java_xmlreader_no_features
+    name: XMLReader without disabling external entities
+    regex: 'XMLReaderFactory\.createXMLReader\s*\(\s*\)'
+    vulnerability_type: xxe
+    severity_score: 7

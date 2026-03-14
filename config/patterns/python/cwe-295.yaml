@@ -1,0 +1,40 @@
+language: python
+cwe_id: "CWE-295"
+cwe_name: "Improper Certificate Validation"
+
+patterns:
+  - id: ssl_python_create_unverified_context
+    name: ssl._create_unverified_context()
+    regex: 'ssl\._create_unverified_context\s*\('
+    vulnerability_type: improper_cert_validation
+    severity_score: 8
+
+  - id: ssl_python_cert_none
+    name: ssl.CERT_NONE disables verification
+    regex: 'ssl\.CERT_NONE'
+    vulnerability_type: improper_cert_validation
+    severity_score: 8
+
+  - id: ssl_python_check_hostname_false
+    name: context.check_hostname = False
+    regex: 'check_hostname\s*=\s*False'
+    vulnerability_type: improper_cert_validation
+    severity_score: 7
+
+  - id: ssl_python_requests_verify_false
+    name: requests with verify=False
+    regex: 'requests\.\w+\s*\(.*verify\s*=\s*False'
+    vulnerability_type: improper_cert_validation
+    severity_score: 8
+
+  - id: ssl_python_httpx_verify_false
+    name: httpx with verify=False
+    regex: 'httpx\.\w+\s*\(.*verify\s*=\s*False'
+    vulnerability_type: improper_cert_validation
+    severity_score: 8
+
+  - id: ssl_python_unverified_context_override
+    name: Overriding default HTTPS context with unverified
+    regex: '_create_default_https_context\s*=\s*ssl\._create_unverified_context'
+    vulnerability_type: improper_cert_validation
+    severity_score: 9

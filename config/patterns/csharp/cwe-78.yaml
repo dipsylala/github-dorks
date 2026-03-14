@@ -1,0 +1,34 @@
+language: csharp
+cwe_id: "CWE-78"
+cwe_name: "Improper Neutralization of Special Elements used in an OS Command"
+
+patterns:
+  - id: cmdi_dotnet_process_start_variable
+    name: Process.Start() with variable argument
+    regex: 'Process\.Start\s*\(\s*(?!["''])[a-zA-Z_$]'
+    vulnerability_type: os_command_injection
+    severity_score: 9
+
+  - id: cmdi_dotnet_processstartinfo_filename_var
+    name: ProcessStartInfo FileName set to variable
+    regex: 'StartInfo\.FileName\s*=\s*(?!["''])[a-zA-Z_$]'
+    vulnerability_type: os_command_injection
+    severity_score: 9
+
+  - id: cmdi_dotnet_processstartinfo_arguments_var
+    name: ProcessStartInfo Arguments set to variable
+    regex: 'StartInfo\.Arguments\s*=\s*(?!["''])[a-zA-Z_$]'
+    vulnerability_type: os_command_injection
+    severity_score: 9
+
+  - id: cmdi_dotnet_processstartinfo_constructor_var
+    name: new ProcessStartInfo() with variable filename
+    regex: 'new\s+ProcessStartInfo\s*\(\s*(?!["''])[a-zA-Z_$]'
+    vulnerability_type: os_command_injection
+    severity_score: 8
+
+  - id: cmdi_dotnet_cmd_shell_execute
+    name: Process running cmd.exe /c with variable
+    regex: 'ProcessStartInfo\s*\(\s*[''"]cmd\.exe[''"].*\+|/c\s*[''"].*\+|StartInfo\.Arguments.*\$"'
+    vulnerability_type: os_command_injection
+    severity_score: 10

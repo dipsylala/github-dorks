@@ -1,0 +1,46 @@
+language: php
+cwe_id: "CWE-611"
+cwe_name: "Improper Restriction of XML External Entity Reference"
+
+patterns:
+  - id: xxe_php_libxml_entity_loader_enabled
+    name: libxml_disable_entity_loader(false) enables XXE
+    regex: 'libxml_disable_entity_loader\s*\(\s*false\s*\)'
+    vulnerability_type: xxe
+    severity_score: 9
+
+  - id: xxe_php_libxml_noent_flag
+    name: LIBXML_NOENT flag — substitutes XML entities
+    regex: 'LIBXML_NOENT'
+    vulnerability_type: xxe
+    severity_score: 8
+
+  - id: xxe_php_simplexml_load_string
+    name: simplexml_load_string() — unsafe by default
+    regex: 'simplexml_load_string\s*\('
+    vulnerability_type: xxe
+    severity_score: 6
+
+  - id: xxe_php_simplexml_load_file
+    name: simplexml_load_file() — unsafe by default
+    regex: 'simplexml_load_file\s*\('
+    vulnerability_type: xxe
+    severity_score: 6
+
+  - id: xxe_php_domdocument_loadxml
+    name: DOMDocument::loadXML() with external entity risk
+    regex: '\$\w+\s*->\s*loadXML\s*\('
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_php_domdocument_load
+    name: DOMDocument::load() with external entity risk
+    regex: 'new\s+DOMDocument.*\n.*->load\s*\(|\$\w+\s*->\s*load\s*\(\s*\$'
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_php_xmlparser_create
+    name: xml_parser_create() — expat-based XML parser
+    regex: 'xml_parser_create\s*\('
+    vulnerability_type: xxe
+    severity_score: 5

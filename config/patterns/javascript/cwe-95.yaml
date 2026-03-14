@@ -1,0 +1,46 @@
+language: javascript
+cwe_id: "CWE-95"
+cwe_name: "Improper Neutralization of Directives in Dynamically Evaluated Code"
+
+patterns:
+  - id: codeinjection_js_eval_location
+    name: eval() with location (URL-based input)
+    regex: 'eval\s*\(\s*(?:window\.)?location\b'
+    vulnerability_type: code_injection
+    severity_score: 9
+
+  - id: codeinjection_js_eval_urlsearchparams
+    name: eval() with URLSearchParams data
+    regex: 'eval\s*\(\s*(?:new\s+URLSearchParams|urlParams|searchParams)\b'
+    vulnerability_type: code_injection
+    severity_score: 9
+
+  - id: codeinjection_js_eval_req_body
+    name: eval() with request body/params
+    regex: 'eval\s*\(\s*(?:req\.|request\.)\w'
+    vulnerability_type: code_injection
+    severity_score: 10
+
+  - id: codeinjection_js_new_function_req
+    name: new Function() constructor with request data
+    regex: 'new\s+Function\s*\(.*req(?:uest)?\.'
+    vulnerability_type: code_injection
+    severity_score: 10
+
+  - id: codeinjection_js_new_function_param
+    name: new Function() with URL/query parameter
+    regex: 'new\s+Function\s*\(.*(?:location|searchParams|getParam|query)\b'
+    vulnerability_type: code_injection
+    severity_score: 9
+
+  - id: codeinjection_js_settimeout_string_variable
+    name: setTimeout/setInterval with non-literal string
+    regex: 'set(?:Timeout|Interval)\s*\(\s*(?![\x27\x22`])[a-zA-Z_$]'
+    vulnerability_type: code_injection
+    severity_score: 7
+
+  - id: codeinjection_js_vm_runincontext
+    name: vm.runInContext/runInThisContext with variable
+    regex: 'vm\.runIn(?:This)?Context\s*\(\s*(?![\x27\x22`])'
+    vulnerability_type: code_injection
+    severity_score: 8

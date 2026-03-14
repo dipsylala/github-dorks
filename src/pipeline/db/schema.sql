@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS findings (
 CREATE INDEX IF NOT EXISTS idx_findings_repository_id ON findings (repository_id);
 CREATE INDEX IF NOT EXISTS idx_findings_score         ON findings (score DESC);
 CREATE INDEX IF NOT EXISTS idx_findings_pattern_id    ON findings (pattern_id);
+CREATE INDEX IF NOT EXISTS idx_findings_unscored      ON findings (id) WHERE score = 0;
 CREATE INDEX IF NOT EXISTS idx_repositories_score     ON repositories (score DESC);
 CREATE INDEX IF NOT EXISTS idx_repositories_language  ON repositories (language);
 

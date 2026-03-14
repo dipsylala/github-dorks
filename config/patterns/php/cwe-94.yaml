@@ -1,0 +1,34 @@
+language: php
+cwe_id: "CWE-94"
+cwe_name: "Improper Control of Generation of Code"
+
+patterns:
+  - id: codeinjection_php_eval
+    name: PHP eval() with any argument
+    regex: '\beval\s*\('
+    vulnerability_type: code_injection
+    severity_score: 9
+
+  - id: codeinjection_php_preg_replace_eval
+    name: preg_replace() with /e modifier (executes as PHP)
+    regex: 'preg_replace\s*\(\s*[''"][^''"]*/e[''"]'
+    vulnerability_type: code_injection
+    severity_score: 10
+
+  - id: codeinjection_php_assert_variable
+    name: assert() with variable argument (code execution in PHP < 8)
+    regex: '\bassert\s*\(\s*\$'
+    vulnerability_type: code_injection
+    severity_score: 8
+
+  - id: codeinjection_php_create_function
+    name: create_function() deprecated dynamic code
+    regex: '\bcreate_function\s*\('
+    vulnerability_type: code_injection
+    severity_score: 9
+
+  - id: codeinjection_php_eval_superglobal
+    name: eval() directly with superglobal input
+    regex: 'eval\s*\(\s*\$_(?:GET|POST|REQUEST|COOKIE|SERVER)'
+    vulnerability_type: code_injection
+    severity_score: 10

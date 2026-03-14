@@ -1,0 +1,40 @@
+language: csharp
+cwe_id: "CWE-79"
+cwe_name: "Improper Neutralization of Input During Web Page Generation (XSS)"
+
+patterns:
+  - id: xss_dotnet_response_write_request
+    name: Response.Write() with Request data
+    regex: 'Response\.Write\s*\(\s*Request\b'
+    vulnerability_type: xss
+    severity_score: 8
+
+  - id: xss_dotnet_html_raw
+    name: Html.Raw() — bypasses Razor HTML encoding
+    regex: '@Html\.Raw\s*\('
+    vulnerability_type: xss
+    severity_score: 7
+
+  - id: xss_dotnet_html_raw_request
+    name: Html.Raw() with request data
+    regex: 'Html\.Raw\s*\(.*(?:Request\[|Request\.Form|Request\.QueryString|Request\.Params)'
+    vulnerability_type: xss
+    severity_score: 9
+
+  - id: xss_dotnet_mvchtmlstring_create
+    name: MvcHtmlString.Create() — marks string as safe without encoding
+    regex: 'MvcHtmlString\.Create\s*\('
+    vulnerability_type: xss
+    severity_score: 6
+
+  - id: xss_dotnet_htmlstring_create
+    name: HtmlString constructor — marks string as safe without encoding
+    regex: 'new\s+HtmlString\s*\('
+    vulnerability_type: xss
+    severity_score: 5
+
+  - id: xss_dotnet_innerhtml_assignment
+    name: InnerHtml property assignment with variable
+    regex: '\.InnerHtml\s*=\s*(?!["''])[a-zA-Z_$\(]'
+    vulnerability_type: xss
+    severity_score: 7

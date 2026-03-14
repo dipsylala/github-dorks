@@ -160,6 +160,7 @@ class Scanner(BaseStage):
             "--line-number",    # include line numbers in match objects
             "--multiline",      # allow patterns to span lines if needed
             "--case-sensitive",
+            "--pcre2",          # enable PCRE2 for lookahead/lookbehind support
             *self._ignore_args,
         ]
 

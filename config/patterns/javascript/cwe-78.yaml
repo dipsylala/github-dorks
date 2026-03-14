@@ -5,8 +5,7 @@ cwe_name: "OS Command Injection"
 patterns:
   - id: cmd_node_exec_var
     name: Node.js child_process exec() with variable
-    regex: |-
-      \bexec\s*\(\s*[`'"]\s*[^`'"]|\bexec\s*\(\s*(cmd|command|input|req)
+    regex: '\bexec\s*\(\s*(cmd|command|input|req|args|data|user|param|body|query)'
     vulnerability_type: command_injection
     severity_score: 10
 

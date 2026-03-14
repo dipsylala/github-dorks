@@ -54,6 +54,33 @@ class ReviewQueue(BaseStage):
             json.dump([asdict(f) for f in findings], fh, indent=2, default=str)
         self._logger.info("report_written path=%s", report_path)
 
+        # Write repo_report.json alongside findings_report.json.
+        # One entry per repository, sorted by highest combined score descending.
+        repos: dict[str, dict] = {}
+        for f in findings:
+            rid = f.repository_id
+            if rid not in repos:
+                repos[rid] = {
+                    "repository_id":   rid,
+                    "repository_name": f.repository_name,
+                    "repository_url":  f.repository_url,
+                    "framework":       f.framework,
+                    "top_score":       f.score,
+                    "finding_count":   0,
+                    "vulnerability_types": [],
+                }
+            entry = repos[rid]
+            entry["finding_count"] += 1
+            entry["top_score"] = max(entry["top_score"], f.score)
+            if f.vulnerability_type not in entry["vulnerability_types"]:
+                entry["vulnerability_types"].append(f.vulnerability_type)
+
+        repo_list = sorted(repos.values(), key=lambda r: r["top_score"], reverse=True)
+        repo_report_path = report_path.with_name("repo_report.json")
+        with repo_report_path.open("w", encoding="utf-8") as fh:
+            json.dump(repo_list, fh, indent=2, default=str)
+        self._logger.info("repo_report_written path=%s repos=%d", repo_report_path, len(repo_list))
+
     async def get_top_findings(self, limit: int = 1000, language: str | None = None) -> list[Finding]:
         """Return the top *limit* findings ordered by combined score descending.
 

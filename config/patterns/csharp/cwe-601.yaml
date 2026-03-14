@@ -1,0 +1,34 @@
+language: csharp
+cwe_id: "CWE-601"
+cwe_name: "URL Redirection to Untrusted Site (Open Redirect)"
+
+patterns:
+  - id: redirect_dotnet_response_redirect_request
+    name: Response.Redirect() with Request data
+    regex: 'Response\.Redirect\s*\(\s*Request\b'
+    vulnerability_type: open_redirect
+    severity_score: 7
+
+  - id: redirect_dotnet_redirect_variable
+    name: Controller Redirect() with variable URL
+    regex: '\breturn\s+Redirect(?:Permanent)?\s*\(\s*(?:url|returnUrl|redirectUrl|target|next|redirect)\b'
+    vulnerability_type: open_redirect
+    severity_score: 7
+
+  - id: redirect_dotnet_redirect_querystring
+    name: Redirect with QueryString value
+    regex: 'Redirect\s*\(\s*Request\.QueryString\b'
+    vulnerability_type: open_redirect
+    severity_score: 8
+
+  - id: redirect_dotnet_redirect_form_value
+    name: Redirect with form/param value
+    regex: 'Redirect\s*\(\s*Request\[|Redirect\s*\(\s*Request\.Form\b|Redirect\s*\(\s*Request\.Params\b'
+    vulnerability_type: open_redirect
+    severity_score: 8
+
+  - id: redirect_dotnet_localredirect_no_validation
+    name: LocalRedirect with variable (may bypass IsLocalUrl)
+    regex: '\breturn\s+LocalRedirect\s*\(\s*(?!["''])'
+    vulnerability_type: open_redirect
+    severity_score: 6

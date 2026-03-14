@@ -17,7 +17,7 @@ patterns:
 
   - id: deser_python_yaml_load_unsafe
     name: Python yaml.load() without safe Loader
-    regex: 'yaml\.load\s*\([^)]*\)'
+    regex: 'yaml\.load\s*\((?![^)]*Loader\s*=)'
     vulnerability_type: deserialization
     severity_score: 7
 

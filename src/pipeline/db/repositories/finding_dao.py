@@ -205,6 +205,64 @@ class FindingDAO:
             )
         return [_row_to_finding(r) for r in rows]
 
+    async def count_unscored(self, language: str | None = None) -> int:
+        """Return the number of findings with score = 0."""
+        if language:
+            val = await self._db.fetchval(
+                """
+                SELECT COUNT(*) FROM findings f
+                JOIN repositories r ON r.id = f.repository_id
+                WHERE f.score = 0 AND r.language = ?
+                """,
+                language,
+            )
+        else:
+            val = await self._db.fetchval(
+                "SELECT COUNT(*) FROM findings WHERE score = 0"
+            )
+        return int(val or 0)
+
+    async def score_all(self, language: str | None = None) -> None:
+        """Score all unscored findings in a single SQL UPDATE.
+
+        Replicates the logic in ResultScorer.compute_score() inside the
+        database engine, eliminating Python round-trips for each row.
+        NOTE: keep this expression in sync with ResultScorer._VULN_BASE_SCORES
+        and ResultScorer._PATH_BOOSTS if either changes.
+        """
+        score_expr = """
+            CASE vulnerability_type
+                WHEN 'command_injection' THEN 10
+                WHEN 'deserialization'   THEN 9
+                WHEN 'file_inclusion'    THEN 8
+                WHEN 'path_traversal'    THEN 8
+                WHEN 'sql_injection'     THEN 7
+                WHEN 'ssrf'              THEN 6
+                WHEN 'xss'              THEN 3
+                ELSE 0
+            END
+            + CASE WHEN file_path LIKE '%controllers/%' THEN 3 ELSE 0 END
+            + CASE WHEN file_path LIKE '%routes/%'      THEN 3 ELSE 0 END
+            + COALESCE(
+                (SELECT r.score / 10 FROM repositories r WHERE r.id = findings.repository_id),
+                0
+              )
+        """
+        if language:
+            await self._db.execute(
+                f"""
+                UPDATE findings
+                SET score = ({score_expr})
+                WHERE score = 0
+                  AND repository_id IN (SELECT id FROM repositories WHERE language = ?)
+                """,
+                language,
+            )
+        else:
+            await self._db.execute(
+                f"UPDATE findings SET score = ({score_expr}) WHERE score = 0"
+            )
+
     async def list_top(self, limit: int = 1000, language: str | None = None) -> list[Finding]:
         """Return the highest-scored findings via the review_queue view."""
         if language:
@@ -252,6 +310,9 @@ class FindingDAO:
                         r["repository_url"], r["file_path"], r["line_number"],
                         local_path=r["local_path"],
                     ),
+                    repository_name=r["repository_name"],
+                    repository_url=r["repository_url"],
+                    framework=r["framework"],
                 )
             )
         return results

@@ -1,0 +1,52 @@
+language: python
+cwe_id: "CWE-611"
+cwe_name: "Improper Restriction of XML External Entity Reference"
+
+patterns:
+  - id: xxe_python_elementtree_parse
+    name: xml.etree.ElementTree.parse() — unsafe by default
+    regex: '(?:ElementTree|ET)\.parse\s*\('
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_python_elementtree_fromstring
+    name: xml.etree.ElementTree.fromstring() — unsafe by default
+    regex: '(?:ElementTree|ET)\.fromstring\s*\('
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_python_minidom_parse
+    name: xml.dom.minidom.parse() — unsafe by default
+    regex: 'minidom\.parse\s*\('
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_python_minidom_parsestring
+    name: xml.dom.minidom.parseString() — unsafe by default
+    regex: 'minidom\.parseString\s*\('
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_python_lxml_parse
+    name: lxml.etree.parse() without resolve_entities=False
+    regex: 'lxml\.etree\.parse\s*\('
+    vulnerability_type: xxe
+    severity_score: 6
+
+  - id: xxe_python_lxml_fromstring
+    name: lxml.etree.fromstring() without XMLParser
+    regex: 'lxml\.etree\.fromstring\s*\('
+    vulnerability_type: xxe
+    severity_score: 6
+
+  - id: xxe_python_saxutils_parse
+    name: xml.sax parse() — unsafe by default
+    regex: 'xml\.sax\.parse\s*\('
+    vulnerability_type: xxe
+    severity_score: 7
+
+  - id: xxe_python_import_xml_not_defused
+    name: Importing stdlib xml instead of defusedxml
+    regex: '^\s*import\s+xml\b'
+    vulnerability_type: xxe
+    severity_score: 4

@@ -1,0 +1,46 @@
+language: java
+cwe_id: "CWE-327"
+cwe_name: "Use of a Broken or Risky Cryptographic Algorithm"
+
+patterns:
+  - id: crypto_java_messagedigest_md5
+    name: MessageDigest MD5
+    regex: 'MessageDigest\.getInstance\s*\(\s*"MD5"\s*\)'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_java_messagedigest_sha1
+    name: MessageDigest SHA-1
+    regex: 'MessageDigest\.getInstance\s*\(\s*"SHA-?1"\s*\)'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_java_cipher_des
+    name: Cipher DES
+    regex: 'Cipher\.getInstance\s*\(\s*"DES(?:/|")'
+    vulnerability_type: weak_crypto
+    severity_score: 7
+
+  - id: crypto_java_cipher_rc4
+    name: Cipher RC4/ARCFOUR
+    regex: 'Cipher\.getInstance\s*\(\s*"(?:RC4|ARCFOUR)"'
+    vulnerability_type: weak_crypto
+    severity_score: 7
+
+  - id: crypto_java_cipher_ecb_mode
+    name: Block cipher in ECB mode
+    regex: 'Cipher\.getInstance\s*\(\s*"[^"]+/ECB/'
+    vulnerability_type: weak_crypto
+    severity_score: 6
+
+  - id: crypto_java_cipher_3des
+    name: Cipher 3DES/DESede (weak key size)
+    regex: 'Cipher\.getInstance\s*\(\s*"DESede(?:/|")'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_java_rsa_no_oaep
+    name: RSA without OAEP padding
+    regex: 'Cipher\.getInstance\s*\(\s*"RSA/(?:ECB/)?(?:PKCS1Padding|NoPadding)"'
+    vulnerability_type: weak_crypto
+    severity_score: 6

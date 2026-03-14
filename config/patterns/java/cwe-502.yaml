@@ -26,3 +26,33 @@ patterns:
     regex: 'new\s+XMLDecoder\s*\('
     vulnerability_type: deserialization
     severity_score: 10
+
+  - id: deser_java_jackson_enable_default_typing
+    name: Jackson ObjectMapper enableDefaultTyping (unsafe polymorphic deserialization)
+    regex: '\.enableDefaultTyping\s*\('
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_java_jackson_activate_default_typing
+    name: Jackson ObjectMapper activateDefaultTyping (unsafe polymorphic deserialization)
+    regex: '\.activateDefaultTyping\s*\('
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_java_snakeyaml_constructor
+    name: SnakeYAML Yaml() no-arg constructor (unsafe load)
+    regex: 'new\s+Yaml\s*\(\s*\)'
+    vulnerability_type: deserialization
+    severity_score: 8
+
+  - id: deser_java_xstream_fromxml
+    name: XStream fromXML deserialization
+    regex: 'xstream\.fromXML\s*\('
+    vulnerability_type: deserialization
+    severity_score: 9
+
+  - id: deser_java_kryo_readobject
+    name: Kryo readObject/readClassAndObject
+    regex: 'kryo\.read(?:Object|ClassAndObject)\s*\('
+    vulnerability_type: deserialization
+    severity_score: 8

@@ -1,0 +1,28 @@
+language: javascript
+cwe_id: "CWE-319"
+cwe_name: "Cleartext Transmission of Sensitive Information"
+
+patterns:
+  - id: cleartext_js_insecure_websocket
+    name: Insecure WebSocket connection (ws://)
+    regex: '\bws://(?!localhost|127\.0\.0\.1)'
+    vulnerability_type: cleartext_transmission
+    severity_score: 7
+
+  - id: cleartext_js_http_fetch
+    name: fetch() over plain HTTP
+    regex: 'fetch\s*\(\s*[''"]http://'
+    vulnerability_type: cleartext_transmission
+    severity_score: 5
+
+  - id: cleartext_js_axios_http
+    name: axios request over plain HTTP
+    regex: 'axios\.\w+\s*\(\s*[''"]http://'
+    vulnerability_type: cleartext_transmission
+    severity_score: 5
+
+  - id: cleartext_js_xmlhttprequest_http
+    name: XMLHttpRequest over plain HTTP
+    regex: '\.open\s*\(\s*[''"](?:GET|POST|PUT|DELETE|PATCH)[''"],\s*[''"]http://'
+    vulnerability_type: cleartext_transmission
+    severity_score: 5

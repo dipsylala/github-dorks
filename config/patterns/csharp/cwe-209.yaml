@@ -1,0 +1,40 @@
+language: csharp
+cwe_id: "CWE-209"
+cwe_name: "Generation of Error Message Containing Sensitive Information"
+
+patterns:
+  - id: infodisclosure_dotnet_developer_exception_page
+    name: UseDeveloperExceptionPage() outside development check
+    regex: 'UseDeveloperExceptionPage\s*\(\s*\)'
+    vulnerability_type: information_disclosure
+    severity_score: 6
+
+  - id: infodisclosure_dotnet_response_write_exception
+    name: Response.Write with exception details
+    regex: 'Response\.Write\s*\(.*(?:ex|exception|error)\s*\.\s*(?:Message|ToString|StackTrace)'
+    vulnerability_type: information_disclosure
+    severity_score: 7
+
+  - id: infodisclosure_dotnet_return_exception_message
+    name: Returning exception message to client
+    regex: 'return\s+.*(?:ex|exception|error)\s*\.\s*Message\b'
+    vulnerability_type: information_disclosure
+    severity_score: 6
+
+  - id: infodisclosure_dotnet_return_stacktrace
+    name: Returning StackTrace to client
+    regex: '\.StackTrace\b'
+    vulnerability_type: information_disclosure
+    severity_score: 7
+
+  - id: infodisclosure_dotnet_content_exception
+    name: Content() or Ok() with exception details
+    regex: '(?:Content|Ok|BadRequest|StatusCode)\s*\(.*(?:ex|exception)\s*\.\s*(?:Message|ToString|StackTrace)'
+    vulnerability_type: information_disclosure
+    severity_score: 6
+
+  - id: infodisclosure_dotnet_exception_in_json
+    name: Exception serialized into JSON response
+    regex: '(?:JsonResult|Json)\s*\(.*(?:ex|exception)\s*\.\s*(?:Message|ToString)'
+    vulnerability_type: information_disclosure
+    severity_score: 6
