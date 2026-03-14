@@ -55,7 +55,8 @@ class ReviewQueue(BaseStage):
         self._logger.info("report_written path=%s", report_path)
 
         # Write repo_report.json alongside findings_report.json.
-        # One entry per repository, sorted by highest combined score descending.
+        # One entry per repository, sorted by finding count descending.
+        clone_dir = Path(self._config.scanning.clone_dir)
         repos: dict[str, dict] = {}
         for f in findings:
             rid = f.repository_id
@@ -64,6 +65,7 @@ class ReviewQueue(BaseStage):
                     "repository_id":   rid,
                     "repository_name": f.repository_name,
                     "repository_url":  f.repository_url,
+                    "local_path":      str(clone_dir / rid),
                     "framework":       f.framework,
                     "top_score":       f.score,
                     "finding_count":   0,
