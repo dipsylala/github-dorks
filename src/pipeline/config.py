@@ -44,6 +44,7 @@ class ScanningConfig:
     clone_depth: int = 1
     clone_dir: str = "/tmp/repos"
     pushed_after: str = "2023-01-01"
+    pushed_before: str | None = None
     git_clone_timeout_seconds: int = 120
     languages: list[str] = field(
         default_factory=lambda: ["php", "javascript", "python", "java", "csharp"]
@@ -54,15 +55,18 @@ class ScanningConfig:
         ]
     )
     # Each template is a GitHub search query string.  Supported placeholders:
-    #   {language}     — from scanning.languages
-    #   {min_stars}    — from scanning.min_stars
-    #   {pushed_after} — from scanning.pushed_after
+    #   {language}      — from scanning.languages
+    #   {min_stars}     — from scanning.min_stars
+    #   {pushed_after}  — from scanning.pushed_after
+    #   {pushed_before} — from scanning.pushed_before (optional)
+    #   {pushed}        — computed range qualifier, e.g. "pushed:>2023-01-01" or
+    #                     "pushed:2023-01-01..2024-01-01" when pushed_before is set
     # Add multiple templates to sweep different star ranges and avoid the
     # 1 000-result cap imposed by GitHub's search API.
     query_templates: list[str] = field(
         default_factory=lambda: [
             "stars:>{min_stars} fork:false archived:false "
-            "pushed:>{pushed_after} language:{language}"
+            "{pushed} language:{language}"
         ]
     )
 

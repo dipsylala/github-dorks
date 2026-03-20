@@ -11,7 +11,8 @@ scanning:
   max_repo_size_mb: 200
   clone_depth: 1
   clone_dir: e:\temp
-  pushed_after: "2026-03-01"
+  pushed_after: "2024-03-01"
+  pushed_before: "2025-03-01"   # Optional upper bound. When set, uses pushed:AFTER..BEFORE range syntax.
   git_clone_timeout_seconds: 120
   languages:
     - php
@@ -36,7 +37,7 @@ scanning:
     - "*.Test"
   # Add extra templates to sweep more results (GitHub caps search at 1 000/query).
   query_templates:
-    - "stars:>{min_stars} fork:false archived:false pushed:>{pushed_after} language:{language}"
+    - "stars:>{min_stars} fork:false archived:false {pushed} language:{language}"
 
 worker_pools:
   clone_workers: 8

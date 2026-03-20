@@ -195,6 +195,22 @@ class GitHubGraphQLClient:
 
         return []
 
+    async def count_repositories(self, query: str) -> int:
+        """Return the ``repositoryCount`` for *query* using a single cheap request.
+
+        Fetches only 1 node (minimum page size) solely to read ``repositoryCount``
+        from the search response.  Callers can use this to decide whether a query
+        needs to be bisected before pulling all pages.
+        """
+        assert self._session is not None, (
+            "GitHubGraphQLClient must be used as an async context manager."
+        )
+        data = await self._execute(
+            _SEARCH_QUERY,
+            variables={"query": query, "first": 1, "cursor": None},
+        )
+        return int(data["search"]["repositoryCount"])
+
     async def search_repositories(
         self, query: str
     ) -> AsyncGenerator[list[dict[str, Any]], None]:
@@ -236,13 +252,6 @@ class GitHubGraphQLClient:
                     query,
                     total_reported,
                 )
-                if total_reported > 1000:
-                    logger.warning(
-                        "Result set (%d) exceeds GitHub's 1 000-item search cap. "
-                        "Consider splitting the query by star range or date range "
-                        "to avoid missing results.",
-                        total_reported,
-                    )
 
             # Filter out null nodes (union type may include non-Repository hits).
             nodes: list[dict[str, Any]] = [
