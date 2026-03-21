@@ -515,9 +515,75 @@ Highest scores appear first for manual review.
 
 The stage writes a structured JSON report to `config.report_path` (default: `findings_report.json`). The file contains a JSON array of serialised `Finding` objects ordered by combined score descending. Results are also queryable directly via the `review_queue` database view.
 
+A companion file `repo_report.json` is written alongside `findings_report.json`. It contains one entry per repository, sorted by finding count descending, and is the input consumed by `vuln-export`.
+
 ---
 
-## 9. Pattern Packs
+## 8.11 vuln-export (post-pipeline utility)
+
+A standalone command that copies reviewed repository clones to a staging directory for deeper static analysis or manual review. It is **not** part of the `vuln-pipeline` stage order and must be invoked explicitly by the user.
+
+Input: `repo_report.json` (produced by the review-queue stage).
+
+Output: a destination directory containing a copy of each selected repository clone.
+
+Usage:
+
+```text
+vuln-export --dest /path/to/staging
+vuln-export --report repo_report.json --dest /path/to/staging --min-score 7
+vuln-export --report repo_report.json --dest /path/to/staging --min-findings 10
+```
+
+Flags:
+
+```text
+--report        Path to repo_report.json (default: repo_report.json)
+--dest          Destination directory (required)
+--min-score     Only export repos with top_score >= N (default: 0 = all)
+--min-findings  Only export repos with finding_count >= N (default: 0 = all)
+```
+
+Each repository is copied to `<dest>/<repository_name>`. Name collisions are resolved by appending the repository ID. Repos whose local clone no longer exists on disk are reported and skipped. The tool exits with code 1 only when every entry was skipped.
+
+---
+
+## 8.12 vuln-scan (post-pipeline utility)
+
+A standalone command that packages repository clones with the Veracode CLI and submits them for pipeline static analysis. It is **not** part of the `vuln-pipeline` stage order and must be invoked explicitly by the user.
+
+Input: a staging directory produced by `vuln-export`, containing one subdirectory per repository.
+
+Output: per-project package files and scan result JSON files written inside each project's `.veracode-packaging/` subdirectory, plus a `high_severity_summary.json` in the staging root.
+
+Usage:
+
+```text
+vuln-scan --source /path/to/staging
+vuln-scan --source /path/to/staging --package-dir .veracode-packaging
+vuln-scan --source /path/to/staging --summary-only
+```
+
+Flags:
+
+```text
+--source        Directory containing the project folders to scan (required)
+--package-dir   Subdirectory name (relative to each project) where packages and
+                results are written (default: .veracode-packaging)
+--summary-only  Skip packaging and scanning; regenerate high_severity_summary.json
+                from existing filtered result files
+```
+
+For each project directory under `--source`, the tool:
+
+1. Runs `veracode package -s . -a -o <package-dir>` to produce language-appropriate scan archives.
+2. Runs `veracode static scan <package> --results-file <stem>.json --filtered-json-output-file filtered_<stem>.json` for every package produced.
+
+Result files are written alongside their package inside `<project>/<package-dir>/`. Existing `.json` files are excluded from the package list to avoid re-scanning previous results.
+
+After all scans complete, the tool globs `*/<package-dir>/filtered_veracode-auto*.json` across the staging directory and writes `high_severity_summary.json` containing all findings with severity 4 (High) or 5 (Very High), keyed by project name. A breakdown is printed to stdout.
+
+The tool exits with code 1 if any individual scan command failed.
 
 Pattern files are stored as YAML and organised by language and CWE:
 

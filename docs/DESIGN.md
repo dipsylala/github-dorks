@@ -91,6 +91,10 @@ SQLite is opened in WAL mode with `PRAGMA foreign_keys = ON`. A single persisten
 
 Timestamps are stored as ISO-8601 `TEXT`. All booleans are stored as `INTEGER` (0/1).
 
+### Schema versioning
+
+There are no migrations. `schema.sql` is the single source of truth and is applied via `CREATE TABLE IF NOT EXISTS` on every startup, which is a no-op when the tables already exist. If the schema ever changes in a breaking way (new columns, altered constraints), delete `pipeline.db` and the next run recreates it from scratch. This is intentional: the pipeline is a disposable data-collection tool, not a system of record.
+
 ### Schema highlights
 
 - `repositories.filtered` — `0` until `repo-filter` processes a row. Repos that pass are set to `1`; rejected repos are deleted. All stages after `repo-filter` only query `filtered = 1` rows. This also prevents `score`, `framework`, and processing flags from being reset if the same repo is re-discovered by the bisecting discovery logic.
@@ -235,3 +239,35 @@ vuln-pipeline --stage enrich --continue --force
 # reset and re-run all stages in order
 vuln-pipeline --force
 ```
+
+---
+
+## `vuln-export`
+
+`vuln-export` is a standalone post-pipeline utility in `src/pipeline/export.py`. It has no dependency on the database or `PipelineConfig` — it reads `repo_report.json` directly and uses `shutil.copytree` to copy selected clones to a staging directory.
+
+It is registered as a separate entry point so it can be called independently without starting the pipeline:
+
+```text
+vuln-export --dest C:\review
+vuln-export --dest C:\review --min-score 7 --min-findings 3
+```
+
+`--dest` is the only required argument. Filters (`--min-score`, `--min-findings`) are applied before copying; repos whose clone directory no longer exists are skipped and reported. Name collisions in the destination are resolved by appending the repository ID.
+
+## `vuln-scan`
+
+`vuln-scan` is a standalone post-pipeline utility in `src/pipeline/veracode_scan.py`. It has no dependency on the database or `PipelineConfig` — it operates directly on a staging directory produced by `vuln-export`.
+
+It is registered as a separate entry point so it can be called independently without starting the pipeline:
+
+```text
+vuln-scan --source C:\staging
+vuln-scan --source C:\staging --summary-only
+```
+
+`--source` is the only required argument. For each project subdirectory the tool runs `veracode package` followed by `veracode static scan`, writing packages and both a full and filtered result JSON alongside each package inside `<project>/.veracode-packaging/`. Existing `.json` files are skipped during packaging so re-runs do not attempt to scan previous results.
+
+After all scans complete, the tool performs a post-pass glob over all `filtered_veracode-auto*.json` files in the staging tree and writes `high_severity_summary.json` to the staging root, containing every finding with severity >= 4 (High or Very High) keyed by project name. A breakdown is printed to stdout.
+
+`--summary-only` skips packaging and scanning entirely and regenerates the summary from whatever result files are already present on disk.

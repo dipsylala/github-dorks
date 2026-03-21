@@ -12,14 +12,14 @@ scanning:
   clone_depth: 1
   clone_dir: e:\temp
   pushed_after: "2024-03-01"
-  pushed_before: "2025-03-01"   # Optional upper bound. When set, uses pushed:AFTER..BEFORE range syntax.
+  pushed_before: "2024-04-01"   # Optional upper bound. When set, uses pushed:AFTER..BEFORE range syntax.
   git_clone_timeout_seconds: 120
   languages:
     - php
-    - javascript
+    # - javascript
     - python
-    - java
-    - csharp
+    # - java
+    # - csharp
   ignored_paths:
     - node_modules
     - vendor

@@ -117,38 +117,21 @@ class GitHubGraphQLClient:
         ``/repos/{owner}/{repo}/topics`` request.  Returns an empty list on
         any error.
         """
-        assert self._session is not None, (
-            "GitHubGraphQLClient must be used as an async context manager."
-        )
         parts = repo_url.rstrip("/").split("/")
         if len(parts) < 2:
             return []
         owner, repo = parts[-2], parts[-1]
         api_url = f"https://api.github.com/repos/{owner}/{repo}/topics"
-
-        wait = self._rest_limited_until - time.monotonic()
-        if wait > 0:
-            await asyncio.sleep(wait)
-
-        try:
-            async with self._session.get(
-                api_url,
-                headers={"Accept": "application/vnd.github.mercy-preview+json"},
-            ) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    names = data.get("names", [])
-                    if isinstance(names, list):
-                        return [str(n) for n in names]
-                elif resp.status == 403:
-                    remaining = resp.headers.get("X-RateLimit-Remaining", "0")
-                    await self._handle_rest_rate_limit(resp.headers, repo_url, "rest_rate_limit_topics")
-                elif resp.status == 404:
-                    pass  # private / deleted repo
-        except aiohttp.ClientError as exc:
-            logger.debug("topics_error repo=%s error=%s", repo_url, exc)
-
-        return []
+        data = await self._rest_get(
+            api_url,
+            repo_url,
+            "rest_rate_limit_topics",
+            headers={"Accept": "application/vnd.github.mercy-preview+json"},
+        )
+        if data is None:
+            return []
+        names = data.get("names", [])
+        return [str(n) for n in names] if isinstance(names, list) else []
 
     async def get_root_files(self, repo_url: str) -> list[str]:
         """Return filenames in the repository root via the GitHub Contents REST API.
@@ -157,43 +140,19 @@ class GitHubGraphQLClient:
         ``/repos/{owner}/{repo}/contents/`` request.  Returns an empty list on
         any error (404, rate limit, network failure, etc.).
         """
-        assert self._session is not None, (
-            "GitHubGraphQLClient must be used as an async context manager."
-        )
         parts = repo_url.rstrip("/").split("/")
         if len(parts) < 2:
             return []
         owner, repo = parts[-2], parts[-1]
         api_url = f"https://api.github.com/repos/{owner}/{repo}/contents/"
-
-        wait = self._rest_limited_until - time.monotonic()
-        if wait > 0:
-            await asyncio.sleep(wait)
-
-        try:
-            async with self._session.get(api_url) as resp:
-                if resp.status == 200:
-                    items = await resp.json()
-                    if isinstance(items, list):
-                        return [
-                            item["name"]
-                            for item in items
-                            if isinstance(item, dict) and "name" in item
-                        ]
-                elif resp.status == 403:
-                    await self._handle_rest_rate_limit(resp.headers, repo_url, "rest_rate_limit")
-                elif resp.status == 404:
-                    pass  # private / deleted repo — skip silently
-                else:
-                    logger.debug(
-                        "rest_unexpected_status repo=%s status=%d",
-                        repo_url,
-                        resp.status,
-                    )
-        except aiohttp.ClientError as exc:
-            logger.warning("rest_error repo=%s error=%s", repo_url, exc)
-
-        return []
+        items = await self._rest_get(api_url, repo_url, "rest_rate_limit")
+        if not isinstance(items, list):
+            return []
+        return [
+            item["name"]
+            for item in items
+            if isinstance(item, dict) and "name" in item
+        ]
 
     async def count_repositories(self, query: str) -> int:
         """Return the ``repositoryCount`` for *query* using a single cheap request.
@@ -361,6 +320,46 @@ class GitHubGraphQLClient:
             rate_limit["resetAt"],
         )
         await asyncio.sleep(sleep_secs)
+
+    async def _rest_get(
+        self,
+        url: str,
+        repo_url: str,
+        rate_limit_log_key: str,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        """GET *url*, honouring the shared REST rate-limit window.
+
+        Retries once after sleeping through a 403 rate-limit response.
+        Returns the decoded JSON body on success, or ``None`` on 404 / error.
+        """
+        assert self._session is not None, (
+            "GitHubGraphQLClient must be used as an async context manager."
+        )
+        for attempt in range(2):  # attempt 0 = first try, attempt 1 = after rate-limit sleep
+            wait = self._rest_limited_until - time.monotonic()
+            if wait > 0:
+                await asyncio.sleep(wait)
+            try:
+                async with self._session.get(url, headers=headers) as resp:
+                    if resp.status == 200:
+                        return await resp.json()
+                    if resp.status == 403 and attempt == 0:
+                        await self._handle_rest_rate_limit(
+                            resp.headers, repo_url, rate_limit_log_key
+                        )
+                        continue  # retry once
+                    if resp.status == 404:
+                        return None
+                    logger.debug(
+                        "rest_unexpected_status repo=%s status=%d",
+                        repo_url, resp.status,
+                    )
+                    return None
+            except aiohttp.ClientError as exc:
+                logger.warning("rest_error repo=%s error=%s", repo_url, exc)
+                return None
+        return None
 
     async def _handle_rest_rate_limit(
         self,

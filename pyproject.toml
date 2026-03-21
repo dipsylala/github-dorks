@@ -26,6 +26,8 @@ dev = [
 
 [project.scripts]
 vuln-pipeline = "pipeline.__main__:main"
+vuln-export   = "pipeline.export:main"
+vuln-scan     = "pipeline.veracode_scan:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
