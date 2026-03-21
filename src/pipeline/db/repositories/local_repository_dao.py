@@ -78,6 +78,41 @@ class LocalRepositoryDAO:
         )
         return [_row_to_local_repository(r) for r in rows]
 
+    async def list_unscanned(self) -> list[LocalRepository]:
+        """Return local repositories that have not yet been through the scanner."""
+        rows = await self._db.fetch(
+            "SELECT * FROM local_repositories WHERE scanned = 0"
+        )
+        return [_row_to_local_repository(r) for r in rows]
+
+    async def list_unscanned_by_language(self, language: str) -> list[LocalRepository]:
+        """Return unscanned local repos for repositories of *language*."""
+        rows = await self._db.fetch(
+            """
+            SELECT lr.*
+            FROM local_repositories lr
+            JOIN repositories r ON r.id = lr.repository_id
+            WHERE lr.scanned = 0 AND r.language = ?
+            """,
+            language,
+        )
+        return [_row_to_local_repository(r) for r in rows]
+
+    async def mark_scanned(self, repo_ids: list[str]) -> None:
+        """Mark repositories as having been processed by the scanner.
+
+        Chunked in groups of 900 to stay within SQLite's variable limit.
+        """
+        if not repo_ids:
+            return
+        for i in range(0, len(repo_ids), 900):
+            chunk = repo_ids[i : i + 900]
+            placeholders = ",".join("?" * len(chunk))
+            await self._db.execute(
+                f"UPDATE local_repositories SET scanned = 1 WHERE repository_id IN ({placeholders})",
+                *chunk,
+            )
+
     async def delete(self, repository_id: str) -> None:
         """Remove the clone record for *repository_id* (e.g. after disk cleanup)."""
         await self._db.execute(

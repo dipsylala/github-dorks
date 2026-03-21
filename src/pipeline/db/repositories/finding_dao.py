@@ -131,9 +131,9 @@ class FindingDAO:
         return _row_to_finding(row) if row else None
 
     async def update_snippet(self, finding_id: str, snippet: str) -> None:
-        """Update the enriched snippet for *finding_id*."""
+        """Update the enriched snippet for *finding_id* and mark enrichment complete."""
         await self._db.execute(
-            "UPDATE findings SET snippet = ? WHERE id = ?",
+            "UPDATE findings SET snippet = ?, enriched = 1 WHERE id = ?",
             snippet,
             finding_id,
         )
@@ -170,55 +170,55 @@ class FindingDAO:
         return [_row_to_finding(r) for r in rows]
 
     async def list_unenriched(self, limit: int = 5000, language: str | None = None) -> list[Finding]:
-        """Return findings whose snippet has not been populated yet."""
+        """Return findings that have not yet been through the enricher."""
         if language:
             rows = await self._db.fetch(
                 """
                 SELECT f.* FROM findings f
                 JOIN repositories r ON r.id = f.repository_id
-                WHERE f.snippet = '' AND r.language = ?
+                WHERE f.enriched = 0 AND r.language = ?
                 LIMIT ?
                 """,
                 language, limit,
             )
         else:
             rows = await self._db.fetch(
-                "SELECT * FROM findings WHERE snippet = '' LIMIT ?", limit
+                "SELECT * FROM findings WHERE enriched = 0 LIMIT ?", limit
             )
         return [_row_to_finding(r) for r in rows]
 
     async def list_unscored(self, limit: int = 5000, language: str | None = None) -> list[Finding]:
-        """Return findings whose score has not been calculated yet."""
+        """Return findings that have not yet been through the result-scorer."""
         if language:
             rows = await self._db.fetch(
                 """
                 SELECT f.* FROM findings f
                 JOIN repositories r ON r.id = f.repository_id
-                WHERE f.score = 0 AND r.language = ?
+                WHERE f.finding_scored = 0 AND r.language = ?
                 LIMIT ?
                 """,
                 language, limit,
             )
         else:
             rows = await self._db.fetch(
-                "SELECT * FROM findings WHERE score = 0 LIMIT ?", limit
+                "SELECT * FROM findings WHERE finding_scored = 0 LIMIT ?", limit
             )
         return [_row_to_finding(r) for r in rows]
 
     async def count_unscored(self, language: str | None = None) -> int:
-        """Return the number of findings with score = 0."""
+        """Return the number of findings not yet through the result-scorer."""
         if language:
             val = await self._db.fetchval(
                 """
                 SELECT COUNT(*) FROM findings f
                 JOIN repositories r ON r.id = f.repository_id
-                WHERE f.score = 0 AND r.language = ?
+                WHERE f.finding_scored = 0 AND r.language = ?
                 """,
                 language,
             )
         else:
             val = await self._db.fetchval(
-                "SELECT COUNT(*) FROM findings WHERE score = 0"
+                "SELECT COUNT(*) FROM findings WHERE finding_scored = 0"
             )
         return int(val or 0)
 
@@ -252,15 +252,15 @@ class FindingDAO:
             await self._db.execute(
                 f"""
                 UPDATE findings
-                SET score = ({score_expr})
-                WHERE score = 0
+                SET score = ({score_expr}), finding_scored = 1
+                WHERE finding_scored = 0
                   AND repository_id IN (SELECT id FROM repositories WHERE language = ?)
                 """,
                 language,
             )
         else:
             await self._db.execute(
-                f"UPDATE findings SET score = ({score_expr}) WHERE score = 0"
+                f"UPDATE findings SET score = ({score_expr}), finding_scored = 1 WHERE finding_scored = 0"
             )
 
     async def list_top(self, limit: int = 1000, language: str | None = None) -> list[Finding]:

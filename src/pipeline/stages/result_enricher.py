@@ -80,8 +80,7 @@ class ResultEnricher(BaseStage):
 
         full_path = str(Path(local_repo_path) / finding.file_path)
         snippet = self.extract_snippet(full_path, finding.line_number)
-        if snippet:
-            await FindingDAO(self._db).update_snippet(finding.id, snippet)
+        await FindingDAO(self._db).update_snippet(finding.id, snippet)
 
         self._completed += 1
         if self._total and (

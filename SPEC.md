@@ -123,29 +123,38 @@ The `framework-detector` stage uses the `enrichment_workers` pool for concurrent
 Example configuration file:
 
 ```yaml
-min_stars: 100
-max_repo_size_mb: 200
-clone_depth: 1
+scanning:
+  min_stars: 100
+  max_repo_size_mb: 200
+  clone_depth: 1
+  pushed_after: "2023-01-01"   # lower bound for pushed date
+  pushed_before: "2024-01-01" # optional upper bound; omit for open-ended
 
-languages:
-  - php
-  - javascript
-  - python
-  - java
-  - csharp
+  languages:
+    - php
+    - javascript
+    - python
+    - java
+    - csharp
+
+  query_templates:
+    - "stars:>{min_stars} fork:false archived:false {pushed} language:{language}"
+
+  ignored_paths:
+    - node_modules
+    - vendor
+    - dist
+    - build
+    - target
+    - migrations
 
 worker_pools:
   clone_workers: 8
   scan_workers: 16
-
-ignored_paths:
-  - node_modules
-  - vendor
-  - dist
-  - build
-  - target
-  - migrations
+  enrichment_workers: 8
 ```
+
+The `GITHUB_TOKEN` environment variable is always used for the API token; it is never stored in the config file.
 
 ---
 
@@ -164,9 +173,18 @@ ignored_paths:
   "size_mb": "int",
   "archived": "bool",
   "framework": "string|null",
-  "score": "int"
+  "score": "int",
+  "filtered": "int",
+  "scored": "int",
+  "framework_detected": "int"
 }
 ```
+
+`filtered` is `0` until the repo-filter stage processes the repository. Repos that pass are set to `1`; rejected repos are deleted. All stages after `repo-filter` only query rows where `filtered = 1`.
+
+`scored` is `0` until the repo-scorer stage processes the repository. Once scored it is set to `1`, preventing re-scoring on subsequent runs regardless of the computed `score` value.
+
+`framework_detected` is `0` until the framework-detector stage processes the repository. Set to `1` alongside the `framework` write (including when no framework is found — the empty-string sentinel is no longer needed to prevent re-processing).
 
 ---
 
@@ -176,9 +194,12 @@ ignored_paths:
 {
   "repository_id": "string",
   "local_path": "string",
-  "clone_timestamp": "datetime"
+  "clone_timestamp": "datetime",
+  "scanned": "int"
 }
 ```
+
+`scanned` is `0` until the scanner stage processes the repository. Set to `1` after all patterns have been run against it, preventing duplicate findings on subsequent runs.
 
 ---
 
@@ -194,11 +215,17 @@ ignored_paths:
   "vulnerability_type": "string",
   "snippet": "string",
   "matched_pattern_ids": "list[string]",
-  "score": "int"
+  "score": "int",
+  "enriched": "int",
+  "finding_scored": "int"
 }
 ```
 
 `matched_pattern_ids` is populated by the deduplicator — it aggregates the IDs of every pattern that matched the same `(repository_id, file_path, line_number)` location before duplicates are removed.
+
+`enriched` is `0` until the result-enricher processes the finding. Set to `1` after the snippet write (even when no context lines are available), so findings whose clone has been deleted are not re-queued indefinitely.
+
+`finding_scored` is `0` until the result-scorer processes the finding. Set to `1` alongside the score write.
 
 ---
 
@@ -227,13 +254,21 @@ Purpose:
 
 Discover candidate repositories using the GitHub API.
 
-Query filters:
+Query templates are configurable in `config.yaml` under `scanning.query_templates`. Each template supports these placeholders:
 
 ```text
-stars:>100
-fork:false
-archived:false
-pushed:>2023-01-01
+{language}      — substituted from scanning.languages
+{min_stars}     — substituted from scanning.min_stars
+{pushed_after}  — substituted from scanning.pushed_after
+{pushed_before} — substituted from scanning.pushed_before (empty string when unset)
+{pushed}        — computed qualifier: pushed:>AFTER when only pushed_after is set,
+                  or pushed:AFTER..BEFORE when both are set
+```
+
+Default query template:
+
+```text
+stars:>{min_stars} fork:false archived:false {pushed} language:{language}
 ```
 
 Languages targeted:
@@ -245,6 +280,10 @@ python
 java
 csharp
 ```
+
+GitHub caps search results at **1,000 per query**. The stage automatically bisects the date window in half when a query exceeds 1,000 results, recursing until every leaf fits within the cap or the window is reduced to a single day (at which point the 1,000-result cap is accepted and logged as a warning). The check uses a lightweight `count_repositories` probe (1-node request) before committing to full pagination.
+
+On conflict (same repository id), only mutable discovery fields (`name`, `url`, `stars`, `language`, `last_push`, `size_mb`, `archived`) are updated. `score`, `framework`, and `filtered` are never reset by re-discovery.
 
 Output:
 
@@ -275,6 +314,8 @@ cheatsheet
 awesome-
 ```
 
+Rejected repositories are deleted (cascading to findings and local_repositories). Kept repositories are marked `filtered = 1` in the database. All subsequent stages only query repositories with `filtered = 1`.
+
 ---
 
 ### 8.3 framework-detector
@@ -282,6 +323,7 @@ awesome-
 Detect web frameworks by scanning repository root files and GitHub topic tags.
 Uses a concurrent worker pool (`enrichment_workers`) for API calls.
 Both root-file names and topic strings are matched against framework indicators.
+Only operates on repositories with `filtered = 1 AND framework_detected = 0`.
 
 Framework indicators:
 
@@ -332,9 +374,9 @@ Repositories without a framework may be skipped.
 
 ### 8.4 repo-scorer
 
-Assign repository priority scores.
+Assign repository priority scores. Only operates on repositories with `filtered = 1` and `scored = 0`.
 
-Example scoring:
+Scoring:
 
 | Condition                     | Score |
 | ----------------------------- | ----- |
@@ -343,6 +385,8 @@ Example scoring:
 | recent commits (< 6 months)   | +4    |
 | framework detected            | +8    |
 | controllers directory present | +6    |
+
+After writing the score, `scored` is set to `1`. This prevents re-scoring on subsequent runs regardless of the computed `score` value (a repo that matches none of the bonus conditions scores 0 and stays 0 legitimately).
 
 Higher scores are scanned first.
 
@@ -369,6 +413,8 @@ Local repository path stored in `LocalRepository`.
 ### 8.6 scanner
 
 Scan repository files using regex patterns.
+
+Only operates on repositories with `scanned = 0` in `local_repositories`. After all patterns have been run against a repository, it is marked `scanned = 1`. This prevents duplicate findings if the stage is re-run against an existing database.
 
 Recommended tool:
 
@@ -399,6 +445,8 @@ File-type filtering uses ripgrep's `--type` flag (e.g. `--type php`, `--type py`
 ### 8.7 result-enricher
 
 Enhance findings with contextual data.
+
+Only operates on findings with `enriched = 0`. After the snippet is written, `enriched` is set to `1` — even when no context lines are available (e.g. the clone has been deleted). This prevents findings whose clone is missing from being re-queued on every run.
 
 Add:
 
@@ -431,6 +479,8 @@ Before deleting duplicates, all matching pattern IDs for each location are aggre
 ### 8.9 result-scorer
 
 Calculate final finding score.
+
+Only operates on findings with `finding_scored = 0`. After writing the score, `finding_scored` is set to `1`.
 
 Base vulnerability scores:
 
@@ -527,10 +577,10 @@ SQLite is used with WAL journal mode and `PRAGMA foreign_keys = ON` enabled at c
 Tables:
 
 ```text
-repositories       — includes: archived (int, 0/1)
-local_repositories
+repositories       — includes: archived (int, 0/1), filtered (int, 0/1), scored (int, 0/1), framework_detected (int, 0/1)
+local_repositories — includes: scanned (int, 0/1)
 patterns
-findings           — includes: matched_pattern_ids (JSON text array)
+findings           — includes: matched_pattern_ids (JSON text array), enriched (int, 0/1), finding_scored (int, 0/1)
 ```
 
 Indexes:
@@ -539,8 +589,14 @@ Indexes:
 idx_findings_repository_id
 idx_findings_score
 idx_findings_pattern_id
+idx_findings_unenriched         (partial: enriched = 0)
+idx_findings_unscored           (partial: finding_scored = 0)
 idx_repositories_score
 idx_repositories_language
+idx_repositories_unfiltered     (partial: filtered = 0)
+idx_repositories_unscored       (partial: filtered = 1 AND scored = 0)
+idx_repositories_undetected     (partial: filtered = 1 AND framework_detected = 0)
+idx_local_repos_unscanned       (partial: scanned = 0)
 ```
 
 A `review_queue` view joins `findings` and `repositories`, ordered by `finding_score + repo_score DESC`, for the final review stage. The view exposes `repository_id`, `pattern_id`, and `matched_pattern_ids` alongside the combined score columns.

@@ -113,7 +113,7 @@ class Pipeline:
     # Execution
     # ------------------------------------------------------------------ #
 
-    async def run(self, stage: str = "all", language: str | None = None) -> None:
+    async def run(self, stage: str = "all", language: str | None = None, force: bool = False) -> None:
         """Run *stage* or, when *stage* is ``"all"``, every stage in order.
 
         Raises :exc:`ValueError` for unknown stage names.
@@ -121,16 +121,16 @@ class Pipeline:
         """
         if stage == "all":
             for name in STAGE_ORDER:
-                await self._run_stage(name, language)
+                await self._run_stage(name, language, force=force)
         else:
             if stage not in self._stages:
                 valid = ", ".join(STAGE_ORDER)
                 raise ValueError(
                     f"Unknown stage '{stage}'. Valid choices: {valid}, all."
                 )
-            await self._run_stage(stage, language)
+            await self._run_stage(stage, language, force=force)
 
-    async def run_from(self, stage: str, language: str | None = None) -> None:
+    async def run_from(self, stage: str, language: str | None = None, force: bool = False) -> None:
         """Run *stage* and every stage that follows it in order."""
         if stage not in self._stages:
             valid = ", ".join(STAGE_ORDER)
@@ -139,13 +139,32 @@ class Pipeline:
             )
         start = STAGE_ORDER.index(stage)
         for name in STAGE_ORDER[start:]:
-            await self._run_stage(name, language)
+            await self._run_stage(name, language, force=force)
 
-    async def _run_stage(self, name: str, language: str | None = None) -> None:
-        logger.info("stage_start name=%s", name)
+    async def _run_stage(self, name: str, language: str | None = None, force: bool = False) -> None:
+        if force:
+            await self._reset_stage(name)
+        logger.info("stage_start name=%s force=%s", name, force)
         try:
             await self._stages[name].run(language=language)
         except Exception:
             logger.exception("stage_failed name=%s", name)
             raise
+
+    # Stage flags, keyed by stage name.  Stages with no persistent flag are omitted.
+    _STAGE_RESETS: dict[str, str] = {
+        "filter":         "UPDATE repositories     SET filtered          = 0",
+        "detect":         "UPDATE repositories     SET framework_detected = 0",
+        "score-repos":    "UPDATE repositories     SET scored             = 0",
+        "scan":           "UPDATE local_repositories SET scanned          = 0",
+        "enrich":         "UPDATE findings         SET enriched           = 0",
+        "score-findings": "UPDATE findings         SET finding_scored     = 0",
+    }
+
+    async def _reset_stage(self, name: str) -> None:
+        """Reset the processed flag for *name* so the stage re-processes all rows."""
+        sql = self._STAGE_RESETS.get(name)
+        if sql:
+            await self._db.execute(sql)
+            logger.info("stage_reset name=%s", name)
         logger.info("stage_complete name=%s", name)

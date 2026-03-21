@@ -44,7 +44,7 @@ class RepoScorer(BaseStage):
         total = 0
 
         while True:
-            repos = await self._repo_dao.list_unfiltered(limit=batch_size)
+            repos = await self._repo_dao.list_unscored(limit=batch_size)
             if not repos:
                 break
 

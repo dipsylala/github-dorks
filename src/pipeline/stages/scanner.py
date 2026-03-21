@@ -77,14 +77,14 @@ class Scanner(BaseStage):
 
     async def run(self, language: str | None = None) -> None:
         if language:
-            local_repos = await self._local_dao.list_by_language(language)
+            local_repos = await self._local_dao.list_unscanned_by_language(language)
             patterns = [p for p in self._patterns if p.language.lower() == language.lower()]
         else:
-            local_repos = await self._local_dao.list_all()
+            local_repos = await self._local_dao.list_unscanned()
             patterns = self._patterns
 
         if not local_repos:
-            self._logger.info("No cloned repositories found — skipping scan.")
+            self._logger.info("No unscanned repositories found — skipping scan.")
             return
 
         self._logger.info(
@@ -103,6 +103,7 @@ class Scanner(BaseStage):
                 await queue.put((repo, pattern))
 
         await self._run_workers(queue, self._config.worker_pools.scan_workers)
+        await self._local_dao.mark_scanned([repo.repository_id for repo in local_repos])
         self._logger.info("scan_complete total=%d", self._total)
 
     async def _process(self, item: object) -> None:

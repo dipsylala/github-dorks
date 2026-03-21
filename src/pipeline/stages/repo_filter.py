@@ -49,14 +49,15 @@ class RepoFilter(BaseStage):
                 break
 
             rejected_ids = [r.id for r in repos if self.should_reject(r)]
+            kept_ids = [r.id for r in repos if r.id not in set(rejected_ids)]
+
             if rejected_ids:
                 await repo_dao.delete_many(rejected_ids)
+            if kept_ids:
+                await repo_dao.mark_filtered(kept_ids)
 
             total_deleted += len(rejected_ids)
-            total_kept += len(repos) - len(rejected_ids)
-
-            if len(repos) < batch_size:
-                break
+            total_kept += len(kept_ids)
 
         self._logger.info(
             "filter_complete kept=%d deleted=%d", total_kept, total_deleted

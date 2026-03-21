@@ -72,6 +72,8 @@ Every stage extends `BaseStage`, which provides:
 
 Stages that process items concurrently (cloner, scanner, enricher, framework-detector) push work onto a queue and call `_run_workers()`. Stages that operate on batches from the DB (filter, scorer, deduplicator) loop with `LIST … LIMIT n` queries and process the entire result set sequentially.
 
+`repo-filter` marks kept repositories `filtered = 1` after processing each batch and deletes rejected ones. `repo-scorer` queries only `filtered = 1 AND scored = 0` rows, writes the score, and stamps `scored = 1` atomically — so a repo that computes to score 0 (no bonus conditions met) still exits the queue correctly. `framework-detector` queries only `filtered = 1 AND framework_detected = 0` rows and stamps `framework_detected = 1` alongside the framework write. `scanner` queries `scanned = 0` rows in `local_repositories` and stamps `scanned = 1` after all patterns have been run for a given repo. `result-enricher` queries `enriched = 0` findings and stamps `enriched = 1` after the snippet write. `result-scorer` queries `finding_scored = 0` findings and stamps `finding_scored = 1` alongside the score write.
+
 ### Stage execution order
 
 ```text
@@ -91,7 +93,12 @@ Timestamps are stored as ISO-8601 `TEXT`. All booleans are stored as `INTEGER` (
 
 ### Schema highlights
 
-- `repositories.archived` — set from the GraphQL `isArchived` field; archived repos are rejected at the filter stage.
+- `repositories.filtered` — `0` until `repo-filter` processes a row. Repos that pass are set to `1`; rejected repos are deleted. All stages after `repo-filter` only query `filtered = 1` rows. This also prevents `score`, `framework`, and processing flags from being reset if the same repo is re-discovered by the bisecting discovery logic.
+- `repositories.scored` — `0` until `repo-scorer` processes a row. Set to `1` alongside the score write. Allows a repo to legitimately hold `score = 0` (no bonus conditions met) without being picked up for re-scoring on subsequent runs.
+- `repositories.framework_detected` — `0` until `framework-detector` processes a row. Set to `1` alongside the `framework` write (even when no framework is found), removing the need for the old `framework IS NULL` vs empty-string sentinel distinction.
+- `local_repositories.scanned` — `0` until `scanner` finishes all patterns against a repo. Set to `1` atomically at the end of the scan run. Prevents duplicate findings if the stage is re-run on an existing database.
+- `findings.enriched` — `0` until `result-enricher` writes the snippet. Set to `1` even when no context lines are available (e.g. clone deleted), so that finding is not re-queued on every subsequent run.
+- `findings.finding_scored` — `0` until `result-scorer` writes the score. Set to `1` alongside the score so that `finding_scored = 0` is a reliable queue predicate.
 - `findings.matched_pattern_ids` — JSON text array. Populated by the deduplicator before it deletes duplicates; records every pattern that matched the same source location.
 - `review_queue` view — joins findings + repositories, exposes `repository_id`, `pattern_id`, `matched_pattern_ids`, and `combined_score`. Used by `FindingDAO.list_top()` and the final report.
 
@@ -107,13 +114,16 @@ Timestamps are stored as ISO-8601 `TEXT`. All booleans are stored as `INTEGER` (
 
 Rate-limit handling: pauses until the `resetAt` timestamp when fewer than 50 points remain; retries HTTP 403/429 up to 3× honouring `Retry-After`.
 
-GitHub caps search results at **1 000 per query**. To sweep larger result sets, add multiple `query_templates` in `config.yaml` that partition by star range:
+GitHub caps search results at **1,000 per query**. The discovery stage handles this automatically: before paginating, `count_repositories` fires a single cheap probe to read `repositoryCount`. If the count exceeds 1,000, the date window is bisected and each half is queried independently, recursing until every leaf fits within the cap or the window reaches a single day. The `{pushed}` placeholder in query templates resolves to the correct `pushed:AFTER..BEFORE` range for each bisected sub-window.
 
-```yaml
-query_templates:
-  - "stars:100..499 fork:false archived:false pushed:>{pushed_after} language:{language}"
-  - "stars:500..2000 fork:false archived:false pushed:>{pushed_after} language:{language}"
-  - "stars:>2000 fork:false archived:false pushed:>{pushed_after} language:{language}"
+Query templates support these placeholders:
+
+```text
+{language}      — from scanning.languages
+{min_stars}     — from scanning.min_stars
+{pushed_after}  — from scanning.pushed_after
+{pushed_before} — from scanning.pushed_before (empty string when unset)
+{pushed}        — computed: pushed:>AFTER or pushed:AFTER..BEFORE
 ```
 
 ---
@@ -190,3 +200,38 @@ patterns:
 ```
 
 No code changes needed — patterns are loaded at startup via `rglob`.
+
+---
+
+## `--force` flag
+
+Each stage has exactly one flag column that acts as its processed queue predicate. This makes `--force` straightforward: reset the flag, then run the stage normally.
+
+`Pipeline._reset_stage()` issues a single `UPDATE` per stage before the stage's `run()` is called:
+
+| Stage | Reset SQL |
+| ----- | --------- |
+| `filter` | `UPDATE repositories SET filtered = 0` |
+| `detect` | `UPDATE repositories SET framework_detected = 0` |
+| `score-repos` | `UPDATE repositories SET scored = 0` |
+| `scan` | `UPDATE local_repositories SET scanned = 0` |
+| `enrich` | `UPDATE findings SET enriched = 0` |
+| `score-findings` | `UPDATE findings SET finding_scored = 0` |
+
+Stages with no persistent flag (`discover`, `clone`, `dedup`, `queue`) are silently no-ops.
+
+Usage:
+
+```text
+# re-run just the scanner against already-cloned repos
+vuln-pipeline --stage scan --force
+
+# re-score findings from scratch
+vuln-pipeline --stage score-findings --force
+
+# re-run enrich and everything after it
+vuln-pipeline --stage enrich --continue --force
+
+# reset and re-run all stages in order
+vuln-pipeline --force
+```

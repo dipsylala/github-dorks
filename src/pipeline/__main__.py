@@ -9,6 +9,13 @@ Usage:
                   Choices: discover | filter | detect | score-repos |
                            clone | scan | enrich | dedup | score-findings |
                            queue | all
+    --continue    When combined with --stage, continue running all subsequent
+                  stages too
+    --force       Reset the stage's processed flag before running, so
+                  already-processed rows are re-processed.  Useful after
+                  config changes (e.g. updated scoring weights, stricter
+                  filter).  Stages with no persistent flag (discover, clone,
+                  dedup, queue) ignore this option silently.
 """
 
 from __future__ import annotations
@@ -62,6 +69,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=False,
         help="When combined with --stage, continue running all subsequent stages too",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Reset the stage flag(s) before running, so already-processed rows are re-processed",
+    )
     return parser
 
 
@@ -70,13 +83,14 @@ async def _run(
     stage: str,
     language: str | None,
     continue_pipeline: bool,
+    force: bool,
 ) -> None:
     async with DatabasePool(config.database) as db:
         pipeline = await Pipeline.create(config, db)
         if continue_pipeline and stage != "all":
-            await pipeline.run_from(stage, language=language)
+            await pipeline.run_from(stage, language=language, force=force)
         else:
-            await pipeline.run(stage, language=language)
+            await pipeline.run(stage, language=language, force=force)
 
 
 def main() -> None:
@@ -89,7 +103,7 @@ def main() -> None:
         sys.exit(1)
 
     config = PipelineConfig.from_yaml(config_path)
-    asyncio.run(_run(config, args.stage, args.language, args.continue_pipeline))
+    asyncio.run(_run(config, args.stage, args.language, args.continue_pipeline, args.force))
 
 
 if __name__ == "__main__":

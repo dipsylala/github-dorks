@@ -39,59 +39,33 @@ class RepositoryDAO:
     def __init__(self, db: DatabasePool) -> None:
         self._db = db
 
-    async def upsert(self, repo: Repository) -> None:
-        """Insert or update a repository row."""
-        await self._db.execute(
-            """
-            INSERT INTO repositories
-                (id, name, url, stars, language, last_push, size_mb, archived, framework, score)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                name       = excluded.name,
-                url        = excluded.url,
-                stars      = excluded.stars,
-                language   = excluded.language,
-                last_push  = excluded.last_push,
-                size_mb    = excluded.size_mb,
-                archived   = excluded.archived,
-                framework  = excluded.framework,
-                score      = excluded.score
-            """,
-            repo.id,
-            repo.name,
-            repo.url,
-            repo.stars,
-            repo.language,
-            repo.last_push.isoformat(),
-            repo.size_mb,
-            int(repo.archived),
-            repo.framework,
-            repo.score,
-        )
-
     async def upsert_many(self, repos: list[Repository]) -> None:
-        """Bulk upsert a list of repositories in a single transaction."""
+        """Bulk upsert a list of repositories in a single transaction.
+
+        On conflict (same id) only mutable discovery fields are updated.
+        ``score``, ``framework``, and ``filtered`` are managed by their own
+        stages and must not be reset by re-discovery.
+        """
         params = [
             (
                 r.id, r.name, r.url, r.stars, r.language,
-                r.last_push.isoformat(), r.size_mb, int(r.archived), r.framework, r.score,
+                r.last_push.isoformat(), r.size_mb, int(r.archived),
             )
             for r in repos
         ]
         await self._db.executemany(
             """
             INSERT INTO repositories
-                (id, name, url, stars, language, last_push, size_mb, archived, framework, score)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (id, name, url, stars, language, last_push, size_mb, archived)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
-                name       = excluded.name,
-                stars      = excluded.stars,
-                language   = excluded.language,
-                last_push  = excluded.last_push,
-                size_mb    = excluded.size_mb,
-                archived   = excluded.archived,
-                framework  = excluded.framework,
-                score      = excluded.score
+                name      = excluded.name,
+                url       = excluded.url,
+                stars     = excluded.stars,
+                language  = excluded.language,
+                last_push = excluded.last_push,
+                size_mb   = excluded.size_mb,
+                archived  = excluded.archived
             """,
             params,
         )
@@ -104,9 +78,9 @@ class RepositoryDAO:
         return _row_to_repository(row) if row else None
 
     async def update_framework(self, repo_id: str, framework: str | None) -> None:
-        """Set the ``framework`` column for *repo_id*."""
+        """Set the ``framework`` column for *repo_id* and mark detection complete."""
         await self._db.execute(
-            "UPDATE repositories SET framework = ? WHERE id = ?",
+            "UPDATE repositories SET framework = ?, framework_detected = 1 WHERE id = ?",
             framework,
             repo_id,
         )
@@ -120,9 +94,31 @@ class RepositoryDAO:
         )
 
     async def list_unfiltered(self, limit: int = 5000) -> list[Repository]:
-        """Return repositories that have not yet been scored (score == 0)."""
+        """Return repositories that have not yet passed through the filter stage."""
         rows = await self._db.fetch(
-            "SELECT * FROM repositories WHERE score = 0 LIMIT ?", limit
+            "SELECT * FROM repositories WHERE filtered = 0 LIMIT ?", limit
+        )
+        return [_row_to_repository(r) for r in rows]
+
+    async def mark_filtered(self, repo_ids: list[str]) -> None:
+        """Mark repositories as having passed the filter stage.
+
+        Chunked in groups of 900 to stay within SQLite's variable limit.
+        """
+        if not repo_ids:
+            return
+        for i in range(0, len(repo_ids), 900):
+            chunk = repo_ids[i : i + 900]
+            placeholders = ",".join("?" * len(chunk))
+            await self._db.execute(
+                f"UPDATE repositories SET filtered = 1 WHERE id IN ({placeholders})",
+                *chunk,
+            )
+
+    async def list_unscored(self, limit: int = 5000) -> list[Repository]:
+        """Return filtered repositories that have not yet been scored."""
+        rows = await self._db.fetch(
+            "SELECT * FROM repositories WHERE filtered = 1 AND scored = 0 LIMIT ?", limit
         )
         return [_row_to_repository(r) for r in rows]
 
@@ -134,9 +130,9 @@ class RepositoryDAO:
         return [_row_to_repository(r) for r in rows]
 
     async def list_without_framework(self, limit: int = 5000) -> list[Repository]:
-        """Return repositories where framework detection has not yet run."""
+        """Return filtered repositories where framework detection has not yet run."""
         rows = await self._db.fetch(
-            "SELECT * FROM repositories WHERE framework IS NULL LIMIT ?", limit
+            "SELECT * FROM repositories WHERE filtered = 1 AND framework_detected = 0 LIMIT ?", limit
         )
         return [_row_to_repository(r) for r in rows]
 
@@ -156,11 +152,11 @@ class RepositoryDAO:
             )
 
     async def update_score_many(self, pairs: list[tuple[int, str]]) -> None:
-        """Bulk-update scores in a single transaction.
+        """Bulk-update scores and mark repos as scored in a single transaction.
 
         *pairs* is a list of ``(score, repo_id)`` tuples.
         """
         await self._db.executemany(
-            "UPDATE repositories SET score = ? WHERE id = ?",
+            "UPDATE repositories SET score = ?, scored = 1 WHERE id = ?",
             pairs,
         )
