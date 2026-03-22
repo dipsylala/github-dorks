@@ -312,6 +312,7 @@ class FindingDAO:
                     ),
                     repository_name=r["repository_name"],
                     repository_url=r["repository_url"],
+                    local_path=r["local_path"],
                     framework=r["framework"],
                 )
             )

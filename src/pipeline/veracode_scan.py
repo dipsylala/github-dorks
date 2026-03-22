@@ -48,6 +48,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Skip packaging and scanning; just regenerate the high-severity summary from existing result files.",
     )
+    parser.add_argument(
+        "--repo-report",
+        default="repo_report.json",
+        help="Path to repo_report.json for enriching summary with repo metadata (default: repo_report.json).",
+    )
     return parser
 
 
@@ -73,9 +78,24 @@ def _package(project_dir: Path, package_subdir: str) -> list[Path]:
     return [f for f in pkg_dir.iterdir() if f.is_file() and f.suffix != ".json"]
 
 
-def _build_summary(source: Path, package_subdir: str) -> dict[str, list[dict]]:
+def _load_repo_lookup(repo_report_path: Path) -> dict[str, dict]:
+    """Return a dict keyed by repository_name from repo_report.json, or empty if unavailable."""
+    if not repo_report_path.exists():
+        return {}
+    try:
+        repos: list[dict] = json.loads(repo_report_path.read_text(encoding="utf-8"))
+        return {r["repository_name"]: r for r in repos if r.get("repository_name")}
+    except Exception:
+        return {}
+
+
+def _build_summary(
+    source: Path,
+    package_subdir: str,
+    repo_lookup: dict[str, dict] | None = None,
+) -> dict[str, dict]:
     """Glob all filtered result JSONs under source and return high-severity findings."""
-    summary: dict[str, list[dict]] = {}
+    summary: dict[str, dict] = {}
     pattern = f"*/{package_subdir}/filtered_veracode-auto*.json"
     for result_file in sorted(source.glob(pattern)):
         project_name = result_file.parts[len(source.parts)]
@@ -85,20 +105,35 @@ def _build_summary(source: Path, package_subdir: str) -> dict[str, list[dict]]:
             continue
         high = [f for f in data.get("findings", []) if f.get("severity", 0) >= 4]
         if high:
-            summary.setdefault(project_name, []).extend(high)
+            if project_name not in summary:
+                repo_meta = (repo_lookup or {}).get(project_name, {})
+                summary[project_name] = {
+                    "repository_name": repo_meta.get("repository_name", project_name),
+                    "repository_url":  repo_meta.get("repository_url"),
+                    "local_path":      repo_meta.get("local_path"),
+                    "findings": [],
+                }
+            summary[project_name]["findings"].extend(high)
     return summary
 
 
-def _write_summary(source: Path, package_subdir: str) -> None:
+def _write_summary(
+    source: Path,
+    package_subdir: str,
+    repo_lookup: dict[str, dict] | None = None,
+) -> None:
     """Build and write high_severity_summary.json, printing a breakdown."""
-    summary = _build_summary(source, package_subdir)
+    summary = _build_summary(source, package_subdir, repo_lookup=repo_lookup)
     summary_file = source / "high_severity_summary.json"
     summary_file.write_text(json.dumps(summary, indent=2), encoding="utf-8")
-    total_high = sum(len(v) for v in summary.values())
+    total_high = sum(len(v["findings"]) for v in summary.values())
     print(f"High-severity summary written to {summary_file}")
     print(f"{total_high} finding(s) across {len(summary)} project(s)")
-    for project_name, findings in summary.items():
+    for project_name, entry in summary.items():
+        findings = entry["findings"]
         print(f"  [{project_name}] {len(findings)} finding(s)")
+        if entry.get("repository_url"):
+            print(f"    URL: {entry['repository_url']}")
         for fnd in findings:
             loc = fnd.get("files", {}).get("source_file", {})
             loc_str = f"{loc.get('file', '?')}:{loc.get('line', '?')}"
@@ -129,7 +164,8 @@ def main() -> None:
         sys.exit(1)
 
     if args.summary_only:
-        _write_summary(source, args.package_dir)
+        repo_lookup = _load_repo_lookup(Path(args.repo_report))
+        _write_summary(source, args.package_dir, repo_lookup=repo_lookup)
         return
 
     projects = sorted(p for p in source.iterdir() if p.is_dir())
@@ -167,7 +203,8 @@ def main() -> None:
     print(f"Done. {total_scans} scan(s) attempted, {total_errors} error(s).")
 
     print("\nBuilding high-severity summary...")
-    _write_summary(source, args.package_dir)
+    repo_lookup = _load_repo_lookup(Path(args.repo_report))
+    _write_summary(source, args.package_dir, repo_lookup=repo_lookup)
 
     if total_errors:
         sys.exit(1)

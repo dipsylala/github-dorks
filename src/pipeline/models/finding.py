@@ -20,4 +20,5 @@ class Finding:
     # Populated only when loaded via the review_queue view (list_top).
     repository_name: str | None = None
     repository_url: str | None = None
+    local_path: str | None = None
     framework: str | None = None

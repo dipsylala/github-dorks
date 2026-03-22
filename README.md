@@ -10,6 +10,41 @@ Tremendous idea provided by Florian at [https://github.com/dub-flow/github-dorks
 
 ---
 
+## Quick start
+
+**Prerequisites:** Python 3.11+, [uv](https://docs.astral.sh/uv/), [ripgrep](https://github.com/BurntSushi/ripgrep#installation), git, a GitHub personal access token with `public_repo` read scope.
+
+```bash
+git clone https://github.com/dipsylala/github-dorks
+cd github-dorks
+uv venv
+uv pip install -e .
+
+export GITHUB_TOKEN=ghp_your_token_here   # Windows: $env:GITHUB_TOKEN = "ghp_..."
+
+# Edit config/config.yaml to set target languages, star threshold, clone directory, etc.
+
+# Run the full pipeline
+uv run vuln-pipeline
+
+# Review findings
+cat findings_report.json
+```
+
+To forward interesting repos into Veracode SAST:
+
+```bash
+# Copy top-scoring repos to a staging directory
+uv run vuln-export --dest /tmp/staging --min-score 7
+
+# Package and scan with Veracode CLI
+uv run vuln-scan --source /tmp/staging
+```
+
+Results land in `/tmp/staging/high_severity_summary.json`.
+
+---
+
 ## How it works
 
 The pipeline runs ten stages in sequence:
@@ -165,6 +200,49 @@ After the pipeline completes, `findings_report.json` contains a JSON array of fi
 ```
 
 The raw database (`pipeline.db`) can also be queried directly — the `review_queue` view joins findings with their parent repository scores.
+
+A companion `repo_report.json` is written alongside `findings_report.json` with one entry per repository (sorted by finding count), used as input to `vuln-export`.
+
+---
+
+## Post-pipeline tools
+
+### vuln-export
+
+Copies reviewed repository clones to a staging directory for deeper analysis or manual review:
+
+```bash
+uv run vuln-export --dest /path/to/staging
+uv run vuln-export --report repo_report.json --dest /path/to/staging --min-score 7
+uv run vuln-export --report repo_report.json --dest /path/to/staging --min-findings 10
+```
+
+| Flag | Description |
+| --- | --- |
+| `--dest` | Destination directory (required) |
+| `--report` | Path to `repo_report.json` (default: `repo_report.json`) |
+| `--min-score` | Only export repos with `top_score` ≥ N (default: 0 = all) |
+| `--min-findings` | Only export repos with `finding_count` ≥ N (default: 0 = all) |
+
+Each repository is copied to `<dest>/<repository_name>`. Name collisions are resolved by appending the repository ID.
+
+### vuln-scan
+
+Packages exported repositories with the Veracode CLI and runs pipeline static analysis:
+
+```bash
+uv run vuln-scan --source /path/to/staging
+uv run vuln-scan --source /path/to/staging --summary-only
+```
+
+| Flag | Description |
+| --- | --- |
+| `--source` | Staging directory produced by `vuln-export` (required) |
+| `--package-dir` | Subdirectory for packages and results (default: `.veracode-packaging`) |
+| `--repo-report` | Path to `repo_report.json` to enrich summary with repo metadata (default: `repo_report.json`) |
+| `--summary-only` | Skip scanning; regenerate `high_severity_summary.json` from existing results |
+
+After all scans complete, `high_severity_summary.json` is written to the staging root containing all findings with severity ≥ 4 (High), keyed by project name and enriched with `repository_url` and `local_path`.
 
 ---
 
