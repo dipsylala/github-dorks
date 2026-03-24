@@ -1,0 +1,46 @@
+language: php
+cwe_id: "CWE-22"
+cwe_name: "Path Traversal"
+
+patterns:
+  - id: path_php_fopen_superglobal
+    name: PHP fopen() with superglobal path
+    regex: '\bfopen\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: path_traversal
+    severity_score: 8
+
+  - id: path_php_file_get_contents_superglobal
+    name: PHP file_get_contents() with superglobal path
+    regex: '\bfile_get_contents\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: path_traversal
+    severity_score: 8
+
+  - id: path_php_readfile_superglobal
+    name: PHP readfile() with superglobal path
+    regex: '\breadfile\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: path_traversal
+    severity_score: 8
+
+  - id: path_php_file_superglobal
+    name: PHP file() with superglobal path
+    regex: '\bfile\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: path_traversal
+    severity_score: 7
+
+  - id: path_php_file_put_contents_superglobal
+    name: PHP file_put_contents() with superglobal destination
+    regex: '\bfile_put_contents\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: path_traversal
+    severity_score: 9
+
+  - id: path_php_move_uploaded_file_superglobal
+    name: PHP move_uploaded_file() with user-controlled destination
+    regex: '\bmove_uploaded_file\s*\(.*\$_(GET|POST|REQUEST)'
+    vulnerability_type: path_traversal
+    severity_score: 9
+
+  - id: path_php_unlink_superglobal
+    name: PHP unlink() with superglobal path
+    regex: '\bunlink\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: path_traversal
+    severity_score: 9

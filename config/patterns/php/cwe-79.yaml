@@ -38,3 +38,33 @@ patterns:
     regex: '\bprintf\s*\(.*\$_(GET|POST|REQUEST)'
     vulnerability_type: xss
     severity_score: 3
+
+  - id: xss_php_short_echo_superglobal
+    name: PHP short echo tag with superglobal
+    regex: '<\?=\s*\$_(GET|POST|REQUEST|COOKIE|SERVER)'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_echo_concat_superglobal
+    name: PHP echo with string concatenation of superglobal
+    regex: '\becho\b[^;]*\.\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_echo_server_reflected
+    name: PHP echo with $_SERVER user-controlled keys (PHP_SELF, REQUEST_URI, etc.)
+    regex: '\becho\b.*\$_SERVER\s*\[\s*[''"](?:HTTP_REFERER|HTTP_USER_AGENT|QUERY_STRING|REQUEST_URI|PHP_SELF)[''"]'
+    vulnerability_type: xss
+    severity_score: 3
+
+  - id: xss_php_extract_superglobal
+    name: PHP extract() with superglobal — arbitrary variable injection
+    regex: '\bextract\s*\(\s*\$_(GET|POST|REQUEST)'
+    vulnerability_type: xss
+    severity_score: 8
+
+  - id: xss_php_print_r_superglobal
+    name: PHP print_r/var_dump with superglobal — debug output in production
+    regex: '\b(?:print_r|var_dump|var_export)\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)'
+    vulnerability_type: xss
+    severity_score: 2

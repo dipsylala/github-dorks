@@ -314,6 +314,70 @@ _CASES: list[tuple[str, bool, str]] = [
     ("file_php_readfile_var", True, "readfile($path)"),
 
     # ------------------------------------------------------------------ #
+    # PHP — CWE-79  XSS (extended patterns)
+    # ------------------------------------------------------------------ #
+    ("xss_php_short_echo_superglobal", True, "<?= $_GET['name'] ?>"),
+    ("xss_php_short_echo_superglobal", True, "<?= $_POST['msg'] ?>"),
+    ("xss_php_short_echo_superglobal", True, "<?= $_SERVER['PHP_SELF'] ?>"),
+    ("xss_php_short_echo_superglobal", False, "<?= htmlspecialchars($name) ?>"),
+    ("xss_php_echo_concat_superglobal", True, 'echo "Hello " . $_GET["name"];'),
+    ("xss_php_echo_concat_superglobal", True, "echo $greeting . $_POST['email'];"),
+    ("xss_php_echo_concat_superglobal", False, "echo htmlspecialchars($_GET['x']);"),
+    ("xss_php_echo_server_reflected", True, 'echo $_SERVER["PHP_SELF"]'),
+    ("xss_php_echo_server_reflected", True, 'echo $_SERVER["REQUEST_URI"]'),
+    ("xss_php_echo_server_reflected", True, 'echo $_SERVER["HTTP_REFERER"]'),
+    ("xss_php_echo_server_reflected", True, 'echo $_SERVER["QUERY_STRING"]'),
+    ("xss_php_echo_server_reflected", False, 'echo $_SERVER["SERVER_NAME"]'),
+    ("xss_php_extract_superglobal", True, "extract($_GET);"),
+    ("xss_php_extract_superglobal", True, "extract($_POST);"),
+    ("xss_php_extract_superglobal", False, "extract($safeArray);"),
+    ("xss_php_print_r_superglobal", True, "print_r($_GET)"),
+    ("xss_php_print_r_superglobal", True, "var_dump($_POST)"),
+    ("xss_php_print_r_superglobal", True, "var_export($_REQUEST)"),
+    ("xss_php_print_r_superglobal", False, "print_r($safeData)"),
+
+    # ------------------------------------------------------------------ #
+    # PHP — CWE-22  Path Traversal
+    # ------------------------------------------------------------------ #
+    ("path_php_fopen_superglobal", True, "fopen($_GET['file'], 'r')"),
+    ("path_php_fopen_superglobal", True, "fopen($_POST['path'], 'rb')"),
+    ("path_php_fopen_superglobal", False, "fopen('data.txt', 'r')"),
+    ("path_php_fopen_superglobal", False, "fopen($localVar, 'r')"),
+    ("path_php_file_get_contents_superglobal", True, "file_get_contents($_GET['doc'])"),
+    ("path_php_file_get_contents_superglobal", True, "file_get_contents($_REQUEST['path'])"),
+    ("path_php_file_get_contents_superglobal", False, "file_get_contents($localPath)"),
+    ("path_php_readfile_superglobal", True, "readfile($_GET['file'])"),
+    ("path_php_readfile_superglobal", False, "readfile($safe)"),
+    ("path_php_file_superglobal", True, "file($_GET['name'])"),
+    ("path_php_file_superglobal", False, "file('data.txt')"),
+    ("path_php_file_put_contents_superglobal", True, "file_put_contents($_POST['dest'], $data)"),
+    ("path_php_file_put_contents_superglobal", False, "file_put_contents('/tmp/out.txt', $data)"),
+    ("path_php_move_uploaded_file_superglobal", True, "move_uploaded_file($tmp, $_POST['dest'])"),
+    ("path_php_move_uploaded_file_superglobal", False, "move_uploaded_file($tmp, $safeDir . $name)"),
+    ("path_php_unlink_superglobal", True, "unlink($_GET['file'])"),
+    ("path_php_unlink_superglobal", False, "unlink($localFile)"),
+
+    # ------------------------------------------------------------------ #
+    # PHP — CWE-327  Weak Crypto
+    # ------------------------------------------------------------------ #
+    ("crypto_php_md5", True, "md5($password)"),
+    ("crypto_php_md5", True, "md5($data . $salt)"),
+    ("crypto_php_md5", False, "password_hash($pw, PASSWORD_BCRYPT)"),
+    ("crypto_php_sha1", True, "sha1($token)"),
+    ("crypto_php_sha1", False, "hash('sha256', $data)"),
+    ("crypto_php_hash_weak", True, "hash('md5', $input)"),
+    ("crypto_php_hash_weak", True, 'hash("sha1", $data)'),
+    ("crypto_php_hash_weak", True, "hash('md4', $data)"),
+    ("crypto_php_hash_weak", False, "hash('sha256', $data)"),
+    ("crypto_php_hash_weak", False, "hash('sha3-256', $data)"),
+    ("crypto_php_mcrypt_encrypt", True, "mcrypt_encrypt(MCRYPT_DES, $key, $data, MCRYPT_MODE_CBC)"),
+    ("crypto_php_mcrypt_encrypt", True, "mcrypt_encrypt(MCRYPT_BLOWFISH, $key, $data, $mode)"),
+    ("crypto_php_mcrypt_encrypt", False, "openssl_encrypt($data, 'aes-256-cbc', $key)"),
+    ("crypto_php_openssl_des_rc4", True, "openssl_encrypt($data, 'des', $key)"),
+    ("crypto_php_openssl_des_rc4", True, "openssl_encrypt($data, 'rc4', $key)"),
+    ("crypto_php_openssl_des_rc4", False, "openssl_encrypt($data, 'aes-256-cbc', $key)"),
+
+    # ------------------------------------------------------------------ #
     # C# — CWE-78  OS Command Injection
     # ------------------------------------------------------------------ #
     ("cmdi_dotnet_process_start_variable", True, "Process.Start(command)"),

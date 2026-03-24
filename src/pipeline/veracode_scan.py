@@ -16,6 +16,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import subprocess
 import sys
@@ -56,13 +57,60 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _run(cmd: list[str], cwd: Path) -> bool:
-    """Run *cmd* in *cwd*, streaming output.  Returns True on success."""
-    print(f"    $ {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd)
-    if result.returncode != 0:
-        print(f"    ERROR: command exited with code {result.returncode}")
+def _run(cmd: list[str], cwd: Path, log_file: Path | None = None) -> bool:
+    """Run *cmd* in *cwd*, streaming output to console (and optionally *log_file*).
+
+    When *log_file* is given the file is created (or overwritten) in the same
+    directory and receives a timestamped header plus every line of output
+    (stdout and stderr merged) while still printing to the console.
+    Returns True on success.
+    """
+    cmd_str = ' '.join(cmd)
+    print(f"    $ {cmd_str}")
+
+    log_fh = None
+    if log_file is not None:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        log_fh = log_file.open("w", encoding="utf-8")
+        started = datetime.datetime.now().isoformat(timespec="seconds")
+        log_fh.write(f"# Started : {started}\n")
+        log_fh.write(f"# Command : {cmd_str}\n")
+        log_fh.write(f"# Cwd     : {cwd}\n")
+        log_fh.write("#" + "-" * 78 + "\n")
+        log_fh.flush()
+
+    try:
+        with subprocess.Popen(
+            cmd,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        ) as proc:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                print(line, end="")  # already has newline
+                if log_fh is not None:
+                    log_fh.write(line)
+            proc.wait()
+            returncode = proc.returncode
+    finally:
+        if log_fh is not None:
+            finished = datetime.datetime.now().isoformat(timespec="seconds")
+            log_fh.write("#" + "-" * 78 + "\n")
+            log_fh.write(f"# Finished: {finished}\n")
+            log_fh.write(f"# Exit    : {returncode}\n")
+            log_fh.close()
+
+    if returncode != 0:
+        print(f"    ERROR: command exited with code {returncode}")
+        if log_file is not None:
+            print(f"    Log written to: {log_file}")
         return False
+    if log_file is not None:
+        print(f"    Log written to: {log_file}")
     return True
 
 
@@ -142,8 +190,14 @@ def _write_summary(
 
 
 def _scan(package_file: Path, results_file: Path) -> bool:
-    """Run ``veracode static scan`` for *package_file*."""
+    """Run ``veracode static scan`` for *package_file*.
+
+    Scan output is streamed to the console and also written to a log file
+    named ``<package_stem>.log`` inside the same ``.veracode-packaging``
+    directory as the package itself.
+    """
     filtered_results_file = results_file.parent / f"filtered_{results_file.name}"
+    log_file = package_file.parent / f"{package_file.stem}.log"
     return _run(
         [
             "veracode", "static", "scan",
@@ -152,6 +206,7 @@ def _scan(package_file: Path, results_file: Path) -> bool:
             "--filtered-json-output-file", str(filtered_results_file),
         ],
         cwd=package_file.parent,
+        log_file=log_file,
     )
 
 

@@ -263,28 +263,31 @@ class FindingDAO:
                 f"UPDATE findings SET score = ({score_expr}), finding_scored = 1 WHERE finding_scored = 0"
             )
 
-    async def list_top(self, limit: int = 1000, language: str | None = None) -> list[Finding]:
-        """Return the highest-scored findings via the review_queue view."""
+    async def list_top(self, limit: int | None = None, language: str | None = None) -> list[Finding]:
+        """Return findings ordered by combined score descending via the review_queue view.
+
+        Pass *limit=None* (the default) to return all findings.
+        """
+        limit_clause = f"LIMIT {int(limit)}" if limit is not None else ""
         if language:
             rows = await self._db.fetch(
-                """
+                f"""
                 SELECT rq.*, lr.local_path
                 FROM review_queue rq
                 LEFT JOIN local_repositories lr ON lr.repository_id = rq.repository_id
                 WHERE rq.repository_id IN (SELECT id FROM repositories WHERE language = ?)
-                LIMIT ?
+                {limit_clause}
                 """,
-                language, limit,
+                language,
             )
         else:
             rows = await self._db.fetch(
-                """
+                f"""
                 SELECT rq.*, lr.local_path
                 FROM review_queue rq
                 LEFT JOIN local_repositories lr ON lr.repository_id = rq.repository_id
-                LIMIT ?
+                {limit_clause}
                 """,
-                limit,
             )
         # review_queue columns are a superset of findings — map only Finding fields.
         results: list[Finding] = []
@@ -316,6 +319,55 @@ class FindingDAO:
                     framework=r["framework"],
                 )
             )
+        return results
+
+    async def list_repos_with_findings(
+        self,
+        min_score: int = 1,
+        language: str | None = None,
+    ) -> list[dict]:
+        """Return one summary dict per repository that has at least one finding
+        with score >= *min_score*, ordered by top finding score descending.
+
+        Each dict contains:
+            repository_id, repository_name, repository_url, framework,
+            top_score, finding_count, vulnerability_types
+        """
+        lang_filter = "AND r.language = ?" if language else ""
+        params: list = [min_score]
+        if language:
+            params.append(language)
+        rows = await self._db.fetch(
+            f"""
+            SELECT
+                r.id                                                   AS repository_id,
+                r.name                                                 AS repository_name,
+                r.url                                                  AS repository_url,
+                r.framework,
+                MAX(f.score)                                           AS top_score,
+                COUNT(f.id)                                            AS finding_count,
+                GROUP_CONCAT(DISTINCT f.vulnerability_type)           AS vulnerability_types
+            FROM findings f
+            JOIN repositories r ON r.id = f.repository_id
+            WHERE f.score >= ?
+            {lang_filter}
+            GROUP BY r.id
+            ORDER BY top_score DESC, finding_count DESC
+            """,
+            *params,
+        )
+        results = []
+        for r in rows:
+            vtypes = [v for v in (r["vulnerability_types"] or "").split(",") if v]
+            results.append({
+                "repository_id":      r["repository_id"],
+                "repository_name":    r["repository_name"],
+                "repository_url":     r["repository_url"],
+                "framework":          r["framework"] or "",
+                "top_score":          r["top_score"],
+                "finding_count":      r["finding_count"],
+                "vulnerability_types": vtypes,
+            })
         return results
 
     async def delete_duplicates(self, language: str | None = None) -> int:

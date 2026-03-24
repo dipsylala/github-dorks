@@ -1,0 +1,34 @@
+language: php
+cwe_id: "CWE-327"
+cwe_name: "Use of a Broken or Risky Cryptographic Algorithm"
+
+patterns:
+  - id: crypto_php_md5
+    name: PHP md5() — weak hash function
+    regex: '\bmd5\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_php_sha1
+    name: PHP sha1() — weak hash function
+    regex: '\bsha1\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_php_hash_weak
+    name: PHP hash() with weak algorithm
+    regex: '\bhash\s*\(\s*[''"](?:md5|sha1|sha-1|md4|crc32)[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 5
+
+  - id: crypto_php_mcrypt_encrypt
+    name: PHP mcrypt_encrypt() — deprecated with weak ciphers
+    regex: '\bmcrypt_encrypt\s*\('
+    vulnerability_type: weak_crypto
+    severity_score: 7
+
+  - id: crypto_php_openssl_des_rc4
+    name: PHP openssl_encrypt() with DES or RC4
+    regex: 'openssl_encrypt\s*\(.*[''"](?:des|des-ede|des-ede3|des3|rc4|rc2|bf)[''"]'
+    vulnerability_type: weak_crypto
+    severity_score: 7

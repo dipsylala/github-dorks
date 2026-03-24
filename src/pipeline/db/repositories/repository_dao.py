@@ -122,10 +122,10 @@ class RepositoryDAO:
         )
         return [_row_to_repository(r) for r in rows]
 
-    async def list_by_score(self, limit: int = 10_000) -> list[Repository]:
-        """Return repositories ordered by score descending."""
+    async def list_by_score(self) -> list[Repository]:
+        """Return all repositories ordered by score descending."""
         rows = await self._db.fetch(
-            "SELECT * FROM repositories ORDER BY score DESC LIMIT ?", limit
+            "SELECT * FROM repositories ORDER BY score DESC"
         )
         return [_row_to_repository(r) for r in rows]
 

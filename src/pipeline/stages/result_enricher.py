@@ -46,22 +46,30 @@ class ResultEnricher(BaseStage):
             lr.repository_id: lr.local_path for lr in local_repos
         }
 
-        findings = await finding_dao.list_unenriched(language=language)
-        if not findings:
-            self._logger.info("enrich_skip no_unenriched_findings")
-            return
+        batch_size = 5_000
+        total_enriched = 0
 
-        self._logger.info("enrich_start findings=%d", len(findings))
+        while True:
+            findings = await finding_dao.list_unenriched(limit=batch_size, language=language)
+            if not findings:
+                break
 
-        self._total = len(findings)
-        self._completed = 0
+            self._logger.info("enrich_start findings=%d", len(findings))
+            self._total = len(findings)
+            self._completed = 0
 
-        queue: asyncio.Queue[tuple[Finding, str]] = asyncio.Queue()
-        for finding in findings:
-            await queue.put((finding, local_paths.get(finding.repository_id, "")))
+            queue: asyncio.Queue[tuple[Finding, str]] = asyncio.Queue()
+            for finding in findings:
+                await queue.put((finding, local_paths.get(finding.repository_id, "")))
 
-        await self._run_workers(queue, self._config.worker_pools.enrichment_workers)
-        self._logger.info("enrich_complete findings=%d", len(findings))
+            await self._run_workers(queue, self._config.worker_pools.enrichment_workers)
+            total_enriched += len(findings)
+            self._logger.info("enrich_batch_complete findings=%d", len(findings))
+
+            if len(findings) < batch_size:
+                break
+
+        self._logger.info("enrich_complete total=%d", total_enriched)
 
     async def _process(self, item: object) -> None:
         """Enrich one ``(Finding, local_repo_path)`` pair."""

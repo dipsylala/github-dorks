@@ -9,15 +9,15 @@ database:
 scanning:
   min_stars: 100
   max_repo_size_mb: 200
+  pushed_after: "2025-01-01"
+  pushed_before: "2025-12-31"   # Optional upper bound. When set, uses pushed:AFTER..BEFORE range syntax.
   clone_depth: 1
   clone_dir: e:\temp
-  pushed_after: "2024-03-01"
-  pushed_before: "2024-04-01"   # Optional upper bound. When set, uses pushed:AFTER..BEFORE range syntax.
   git_clone_timeout_seconds: 120
   languages:
     - php
     # - javascript
-    - python
+    # - python
     # - java
     # - csharp
   ignored_paths:
