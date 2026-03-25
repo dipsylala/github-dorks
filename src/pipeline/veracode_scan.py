@@ -54,6 +54,16 @@ def _build_parser() -> argparse.ArgumentParser:
         default="repo_report.json",
         help="Path to repo_report.json for enriching summary with repo metadata (default: repo_report.json).",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Skip projects that have already been packaged and scanned. "
+            "Packaging is skipped when the package directory already contains "
+            "zip files.  Scanning is skipped when a filtered result JSON already "
+            "exists for that package."
+        ),
+    )
     return parser
 
 
@@ -79,6 +89,7 @@ def _run(cmd: list[str], cwd: Path, log_file: Path | None = None) -> bool:
         log_fh.write("#" + "-" * 78 + "\n")
         log_fh.flush()
 
+    returncode: int | None = None
     try:
         with subprocess.Popen(
             cmd,
@@ -96,6 +107,12 @@ def _run(cmd: list[str], cwd: Path, log_file: Path | None = None) -> bool:
                     log_fh.write(line)
             proc.wait()
             returncode = proc.returncode
+    except FileNotFoundError as exc:
+        msg = f"# ERROR   : executable not found — {exc}\n"
+        print(f"    ERROR: {exc}")
+        if log_fh is not None:
+            log_fh.write(msg)
+        returncode = -1
     finally:
         if log_fh is not None:
             finished = datetime.datetime.now().isoformat(timespec="seconds")
@@ -114,6 +131,14 @@ def _run(cmd: list[str], cwd: Path, log_file: Path | None = None) -> bool:
     return True
 
 
+def _existing_packages(project_dir: Path, package_subdir: str) -> list[Path]:
+    """Return already-produced package files without running the packager."""
+    pkg_dir = project_dir / package_subdir
+    if not pkg_dir.is_dir():
+        return []
+    return [f for f in pkg_dir.iterdir() if f.is_file() and f.suffix not in (".json", ".log")]
+
+
 def _package(project_dir: Path, package_subdir: str) -> list[Path]:
     """Run ``veracode package`` and return the list of generated files."""
     pkg_dir = project_dir / package_subdir
@@ -123,7 +148,7 @@ def _package(project_dir: Path, package_subdir: str) -> list[Path]:
     )
     if not ok or not pkg_dir.is_dir():
         return []
-    return [f for f in pkg_dir.iterdir() if f.is_file() and f.suffix != ".json"]
+    return [f for f in pkg_dir.iterdir() if f.is_file() and f.suffix not in (".json", ".log")]
 
 
 def _load_repo_lookup(repo_report_path: Path) -> dict[str, dict]:
@@ -236,17 +261,30 @@ def main() -> None:
     for project in projects:
         print(f"[{project.name}]")
 
-        print(f"  Packaging...")
-        packages = _package(project, args.package_dir)
+        if args.resume:
+            packages = _existing_packages(project, args.package_dir)
+            if packages:
+                print(f"  Resuming -- found {len(packages)} existing package(s), skipping packaging")
+            else:
+                print(f"  Packaging...")
+                packages = _package(project, args.package_dir)
+        else:
+            print(f"  Packaging...")
+            packages = _package(project, args.package_dir)
 
         if not packages:
             print(f"  SKIP -- no packages produced")
             continue
 
-        print(f"  Produced {len(packages)} package(s)")
+        if not args.resume:
+            print(f"  Produced {len(packages)} package(s)")
 
         for pkg in sorted(packages):
             results_file = pkg.with_suffix(".json")
+            filtered_results_file = results_file.parent / f"filtered_{results_file.name}"
+            if args.resume and filtered_results_file.exists():
+                print(f"  SKIP  {pkg.name} -- already scanned")
+                continue
             print(f"  Scanning {pkg.name} -> {results_file.name}")
             ok = _scan(pkg, results_file)
             total_scans += 1
