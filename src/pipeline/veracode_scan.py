@@ -25,6 +25,10 @@ from pathlib import Path
 
 _PACKAGE_DIR_NAME = ".veracode-packaging"
 
+_QUALIFYING_CWES = {"22", "78", "79", "80", "89", "327", "502", "611", "918"}
+_MAX_FINDINGS = 60
+_CONTEXT_LINES = 8  # lines before and after the flagged line
+
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
@@ -214,6 +218,123 @@ def _write_summary(
                   f"{fnd.get('issue_type','?')} -- {loc_str}")
 
 
+def _get_source_excerpt(repo_dir: Path, file_path: str, line: int) -> str:
+    """Return a annotated source snippet centred on *line* (1-based)."""
+    if not file_path:
+        return "[no source path]"
+
+    normalized = file_path.replace("\\", "/").lstrip("/")
+    parts = Path(normalized).parts
+    candidates: list[Path | None] = [
+        repo_dir / normalized,
+        repo_dir / Path(*parts[1:]) if len(parts) > 1 else None,
+    ]
+    resolved: Path | None = next(
+        (c for c in candidates if c is not None and c.is_file()), None
+    )
+    if resolved is None:
+        return f"[source file not found: {file_path}]"
+
+    try:
+        lines = resolved.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError as exc:
+        return f"[could not read {file_path}: {exc}]"
+
+    total = len(lines)
+    start = max(0, line - _CONTEXT_LINES - 1)
+    end = min(total, line + _CONTEXT_LINES)
+    out = []
+    for i in range(start, end):
+        lineno = i + 1
+        marker = ">>>" if lineno == line else "   "
+        out.append(f"{lineno:5d} {marker} {lines[i]}")
+    return "\n".join(out)
+
+
+def _enrich_finding(repo_dir: Path, finding: dict, scan_file: str) -> dict:
+    """Return a compact enriched dict for one finding."""
+    src = finding.get("files", {}).get("source_file", {})
+    file_path = src.get("file", "")
+    line = src.get("line", 0)
+    enriched: dict = {
+        "issue_id":       finding.get("issue_id"),
+        "scan_file":      scan_file,
+        "cwe_id":         str(finding.get("cwe_id", "")),
+        "issue_type":     finding.get("issue_type", ""),
+        "severity":       finding.get("severity"),
+        "file":           file_path,
+        "line":           line,
+        "source_excerpt": _get_source_excerpt(repo_dir, file_path, line),
+    }
+    for extra in ("display_text", "flaw_details", "description", "cwename"):
+        if extra in finding:
+            enriched[extra] = finding[extra]
+
+    stack_dumps = finding.get("stack_dumps")
+    if stack_dumps:
+        enriched["stack_dumps"] = stack_dumps
+
+    return enriched
+
+
+def _combine_filtered_results(pkg_dir: Path) -> int:
+    """Merge filtered_*.json files in *pkg_dir* into combined_results.json.
+
+    Applies QUALIFYING_CWES filtering, deduplication within each scan file,
+    severity-descending / CWE-ascending sorting, MAX_FINDINGS cap, and
+    source-context enrichment (CONTEXT_LINES lines around the flagged line).
+
+    Returns the number of findings written.
+    """
+    filtered_files = sorted(pkg_dir.glob("filtered_*.json"))
+    if not filtered_files:
+        return 0
+
+    repo_dir = pkg_dir.parent
+
+    # Load all findings, tagging each with its source filename
+    all_findings: list[tuple[str, dict]] = []  # (scan_filename, finding)
+    for fpath in filtered_files:
+        try:
+            data = json.loads(fpath.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        for f in data.get("findings", []):
+            all_findings.append((fpath.name, f))
+
+    # Filter to qualifying CWEs
+    qualifying = [
+        (sf, f) for sf, f in all_findings
+        if str(f.get("cwe_id", "")) in _QUALIFYING_CWES
+    ]
+
+    # Sort: severity desc, then CWE asc
+    qualifying.sort(key=lambda t: (-int(t[1].get("severity", 0)), int(t[1].get("cwe_id", 0))))
+
+    total_qualifying = len(qualifying)
+    capped = total_qualifying > _MAX_FINDINGS
+    to_write = qualifying[:_MAX_FINDINGS]
+
+    enriched = [_enrich_finding(repo_dir, f, sf) for sf, f in to_write]
+
+    out_file = pkg_dir / "combined_results.json"
+    out_file.write_text(
+        json.dumps(
+            {
+                "repo": repo_dir.name,
+                "total_qualifying": total_qualifying,
+                "assessed_count": len(enriched),
+                "capped": capped,
+                "findings": enriched,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    return len(enriched)
+
+
 def _scan(package_file: Path, results_file: Path) -> bool:
     """Run ``veracode static scan`` for *package_file*.
 
@@ -290,6 +411,11 @@ def main() -> None:
             total_scans += 1
             if not ok:
                 total_errors += 1
+
+        pkg_dir = project / args.package_dir
+        if pkg_dir.is_dir():
+            n = _combine_filtered_results(pkg_dir)
+            print(f"  Combined {n} finding(s) -> {pkg_dir / 'combined_results.json'}")
 
         print()
 
