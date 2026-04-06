@@ -50,8 +50,16 @@ _LANGUAGE_TO_RG_TYPE: dict[str, str] = {
     "php":        "php",
     "python":     "py",
     "javascript": "js",
+    "typescript": "ts",
     "java":       "java",
     "csharp":     "csharp",
+}
+
+# Languages that share patterns with another language.
+# When scanning repos of the key language, the value language's patterns are used,
+# but ripgrep scans files of the key language's type.
+_PATTERN_LANGUAGE_ALIAS: dict[str, str] = {
+    "typescript": "javascript",
 }
 
 
@@ -77,9 +85,12 @@ class Scanner(BaseStage):
 
     async def run(self, language: str | None = None) -> None:
         if language:
+            effective_pattern_lang = _PATTERN_LANGUAGE_ALIAS.get(language.lower(), language.lower())
+            rg_type_override = _LANGUAGE_TO_RG_TYPE.get(language.lower()) if language.lower() in _PATTERN_LANGUAGE_ALIAS else None
             local_repos = await self._local_dao.list_unscanned_by_language(language)
-            patterns = [p for p in self._patterns if p.language.lower() == language.lower()]
+            patterns = [p for p in self._patterns if p.language.lower() == effective_pattern_lang]
         else:
+            rg_type_override = None
             local_repos = await self._local_dao.list_unscanned()
             patterns = self._patterns
 
@@ -97,22 +108,22 @@ class Scanner(BaseStage):
         self._total = len(local_repos) * len(patterns)
         self._completed = 0
 
-        queue: asyncio.Queue[tuple[LocalRepository, Pattern]] = asyncio.Queue()
+        queue: asyncio.Queue[tuple[LocalRepository, Pattern, str | None]] = asyncio.Queue()
         for repo in local_repos:
             for pattern in patterns:
-                await queue.put((repo, pattern))
+                await queue.put((repo, pattern, rg_type_override))
 
         await self._run_workers(queue, self._config.worker_pools.scan_workers)
         await self._local_dao.mark_scanned([repo.repository_id for repo in local_repos])
         self._logger.info("scan_complete total=%d", self._total)
 
     async def _process(self, item: object) -> None:
-        assert isinstance(item, tuple) and len(item) == 2
-        local_repo, pattern = item
+        assert isinstance(item, tuple) and len(item) == 3
+        local_repo, pattern, rg_type_override = item
         assert isinstance(local_repo, LocalRepository)
         assert isinstance(pattern, Pattern)
 
-        findings = await self._scan_one(local_repo, pattern)
+        findings = await self._scan_one(local_repo, pattern, rg_type_override=rg_type_override)
         if findings:
             await self._finding_dao.insert_many(findings)
             self._logger.debug(
@@ -142,6 +153,8 @@ class Scanner(BaseStage):
         self,
         local_repo: LocalRepository,
         pattern: Pattern,
+        *,
+        rg_type_override: str | None = None,
     ) -> list[Finding]:
         """Run ripgrep for one (repo, pattern) pair; return Finding objects."""
         repo_path = local_repo.local_path
@@ -165,8 +178,10 @@ class Scanner(BaseStage):
             *self._ignore_args,
         ]
 
-        # Restrict scan to the pattern's source language when available.
-        rg_type = _LANGUAGE_TO_RG_TYPE.get(pattern.language.lower()) if pattern.language else None
+        # Restrict scan to the repo's source language when available.  An
+        # override is supplied when the repo language differs from the pattern
+        # language (e.g. TypeScript repos scanned with JavaScript patterns).
+        rg_type = rg_type_override or (_LANGUAGE_TO_RG_TYPE.get(pattern.language.lower()) if pattern.language else None)
         if rg_type:
             cmd += ["--type", rg_type]
 

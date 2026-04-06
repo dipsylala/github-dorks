@@ -15,8 +15,9 @@ scanning:
   clone_dir: e:\temp
   git_clone_timeout_seconds: 120
   languages:
-    - php
-    # - javascript
+    # - php
+    - javascript
+    - typescript
     # - python
     # - java
     # - csharp

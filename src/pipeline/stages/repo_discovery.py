@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 _GITHUB_LANG_TO_CONFIG: dict[str, str] = {
     "c#":         "csharp",
     "javascript": "javascript",
+    "typescript": "typescript",
     "php":        "php",
     "python":     "python",
     "java":       "java",
